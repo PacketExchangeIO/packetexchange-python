@@ -1,5 +1,5 @@
 # Do not edit by hand: produced by scripts/generate.py.
-# Source: openapi.json (PacketExchange API 1.1.0).
+# Source: openapi.json (PacketExchange API 1.2.0).
 # Regenerate with: python3 scripts/generate.py
 """Every operation in the spec, keyed by operationId.
 
@@ -144,8 +144,9 @@ OPERATIONS: Dict[str, Operation] = {
     "getCliTestsQuota": Operation("GET", "/api/v1/cli-tests/quota", "CLI tests", "Get your caller-ID test quota and price"),
     "getCliTestsTestableDestinations": Operation("GET", "/api/v1/cli-tests/testable-destinations", "CLI tests", "List the countries with test handsets online"),
     "getCommsCalls": Operation("GET", "/api/v1/comms/calls", "Voice and SMS", "List your API call history"),
+    "getCommsCallsById": Operation("GET", "/api/v1/comms/calls/{id}", "Voice and SMS", "Get one call: live status, cost and gathered digits"),
     "getCommsSms": Operation("GET", "/api/v1/comms/sms", "Voice and SMS", "List your SMS history"),
-    "getCommsSmsByMessageId": Operation("GET", "/api/v1/comms/sms/{messageId}", "Voice and SMS", "Get the status of a sent SMS"),
+    "getCommsSmsByMessageId": Operation("GET", "/api/v1/comms/sms/{messageId}", "Voice and SMS", "Get the delivery status and timeline of a sent SMS"),
     "getCommsVoiceOtpById": Operation("GET", "/api/v1/comms/voice-otp/{id}", "Verify", "Get the outcome of a voice passcode call"),
     "getConnections": Operation("GET", "/api/v1/connections", "Connections", "List your connections"),
     "getConnectionsById": Operation("GET", "/api/v1/connections/{id}", "Connections", "Get a connection with the routes each side can see"),
@@ -169,6 +170,7 @@ OPERATIONS: Dict[str, Operation] = {
     "getDialerTemplates": Operation("GET", "/api/v1/dialer/templates", "Dialer", "List your SMS templates"),
     "getDidsAnalyticsOverview": Operation("GET", "/api/v1/dids/analytics/overview", "Phone numbers", "Get a spend and usage overview across your numbers"),
     "getDidsById": Operation("GET", "/api/v1/dids/{id}", "Phone numbers", "Get one of your phone numbers"),
+    "getDidsByIdAiAgent": Operation("GET", "/api/v1/dids/{id}/ai-agent", "Phone numbers", "See which AI voice agent answers a number"),
     "getDidsByIdAnalytics": Operation("GET", "/api/v1/dids/{id}/analytics", "Phone numbers", "Get spend and usage analytics for a number"),
     "getDidsByIdCdrs": Operation("GET", "/api/v1/dids/{id}/cdrs", "Phone numbers", "List inbound calls to a number"),
     "getDidsByIdFeatures": Operation("GET", "/api/v1/dids/{id}/features", "Phone numbers", "Get a number's voicemail, recording, IVR and schedule settings"),
@@ -202,6 +204,7 @@ OPERATIONS: Dict[str, Operation] = {
     "getInterconnectionsIps": Operation("GET", "/api/v1/interconnections/ips", "Interconnections", "List your whitelisted source IPs"),
     "getInterconnectionsStatusSummary": Operation("GET", "/api/v1/interconnections/status/summary", "Interconnections", "Get a summary of your interconnect setup"),
     "getKycStatus": Operation("GET", "/api/v1/kyc/status", "Compliance", "Get your identity verification status"),
+    "getLookupByNumber": Operation("GET", "/api/v1/lookup/{number}", "Number lookup", "Look up a phone number"),
     "getMarketsSummary": Operation("GET", "/api/v1/markets/summary", "Markets", "Get the marketplace summary"),
     "getNotifications": Operation("GET", "/api/v1/notifications", "Notifications", "List your notifications"),
     "getOffers": Operation("GET", "/api/v1/offers", "Offers", "List offers you made and received"),
@@ -209,6 +212,8 @@ OPERATIONS: Dict[str, Operation] = {
     "getOffersGroups": Operation("GET", "/api/v1/offers/groups", "Offers", "List your bulk offers"),
     "getPayouts": Operation("GET", "/api/v1/payouts", "Payouts", "List your payout requests"),
     "getPricingAiVoice": Operation("GET", "/api/v1/pricing/ai-voice", "System", "Get the public AI voice price per minute"),
+    "getPricingDestinations": Operation("GET", "/api/v1/pricing/destinations", "Markets", "List destinations with live routes and their lowest rates"),
+    "getPricingDestinationsBySlug": Operation("GET", "/api/v1/pricing/destinations/{slug}", "Markets", "Get the live market for one destination"),
     "getPublicListingsByToken": Operation("GET", "/api/v1/public/listings/{token}", "Marketplace routes", "Look at a saved draft listing"),
     "getPublicNumbersCatalog": Operation("GET", "/api/v1/public/numbers/catalog", "Phone numbers", "Browse the public number catalogue"),
     "getPublicNumbersCatalogCountries": Operation("GET", "/api/v1/public/numbers/catalog/countries", "Phone numbers", "List countries in the public number catalogue"),
@@ -775,6 +780,7 @@ OPERATIONS: Dict[str, Operation] = {
     "putApplicationSettings": Operation("PUT", "/api/v1/application/settings", "Application Manager", "Update your Application Manager settings"),
     "putDialerCampaignsById": Operation("PUT", "/api/v1/dialer/campaigns/{id}", "Dialer", "Update a campaign"),
     "putDialerCampaignsByIdCli": Operation("PUT", "/api/v1/dialer/campaigns/{id}/cli", "Dialer", "Assign a caller-ID set and rotation strategy to a campaign"),
+    "putDidsByIdAiAgent": Operation("PUT", "/api/v1/dids/{id}/ai-agent", "Phone numbers", "Point a number at an AI voice agent"),
     "putDidsByIdFeaturesIvr": Operation("PUT", "/api/v1/dids/{id}/features/ivr", "Phone numbers", "Configure the IVR menu on a number"),
     "putDidsByIdFeaturesRecording": Operation("PUT", "/api/v1/dids/{id}/features/recording", "Phone numbers", "Configure call recording on a number"),
     "putDidsByIdFeaturesSchedule": Operation("PUT", "/api/v1/dids/{id}/features/schedule", "Phone numbers", "Configure business-hours routing on a number"),

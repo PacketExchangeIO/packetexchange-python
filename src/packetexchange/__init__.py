@@ -15,7 +15,7 @@ from ._generated import models
 from ._generated.operations import OPERATIONS, Operation
 from ._webhooks import SignatureResult, verify_webhook_signature
 
-__version__ = "0.3.1"
+__version__ = "0.4.0"
 
 __all__ = [
     "DEFAULT_BASE_URL",

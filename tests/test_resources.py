@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import httpx
+import pytest
+
 from .conftest import MockApi
 
 
@@ -90,3 +93,84 @@ def test_webhook_deliveries_and_resend(api: MockApi) -> None:
     assert api.calls[0].path == "/api/v1/account/webhooks/deliveries"
     assert api.calls[0].params == {"status": "failed", "limit": "50"}
     assert (api.calls[1].method, api.calls[1].path) == ("POST", "/api/v1/account/webhooks/deliveries/d1/resend")
+
+
+def test_call_async_sends_actions_and_async_flag(api: MockApi) -> None:
+    px = api.client()
+    px.comms.call_async(
+        "+447700900123",
+        "+14155550100",
+        actions=[{"say": "Press 1 to confirm."}, {"gather": {"digits": 1, "timeout": 5}}],
+        language="es",
+        idempotency_key="call-1",
+    )
+    (call,) = api.calls
+    assert (call.method, call.path) == ("POST", "/api/v1/comms/calls")
+    assert call.body == {
+        "to": "+447700900123",
+        "from": "+14155550100",
+        "actions": [{"say": "Press 1 to confirm."}, {"gather": {"digits": 1, "timeout": 5}}],
+        "language": "es",
+        "async": True,
+    }
+    assert call.headers["x-idempotency-key"] == "call-1"
+
+
+def test_get_call_and_wait_for_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    states = iter(["ringing", "answered", "completed"])
+
+    def responder(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"success": True, "data": {"callId": "c1", "status": next(states)}})
+
+    # Skip the real sleep between polls so the test runs instantly.
+    monkeypatch.setattr("packetexchange._client.time.sleep", lambda _s: None)
+    api = MockApi(responder=responder)
+    px = api.client()
+    done = px.comms.wait_for_call("c1", interval=1)
+    assert done["status"] == "completed"
+    assert [(c.method, c.path) for c in api.calls] == [("GET", "/api/v1/comms/calls/c1")] * 3
+
+
+def test_get_sms_returns_the_delivery_timeline() -> None:
+    timeline = [
+        {"status": "queued", "at": "2026-09-23T10:00:00Z", "source": "platform"},
+        {"status": "sent", "at": "2026-09-23T10:00:01Z", "source": "submit"},
+        {"status": "delivered", "at": "2026-09-23T10:00:04Z", "source": "carrier_receipt"},
+    ]
+    api = MockApi(
+        responder=lambda _r: httpx.Response(
+            200, json={"success": True, "data": {"messageId": "m1", "status": "delivered", "timeline": timeline}}
+        )
+    )
+    status = api.client().comms.get_sms("m1")
+    assert (api.calls[0].method, api.calls[0].path) == ("GET", "/api/v1/comms/sms/m1")
+    assert status["status"] == "delivered"
+    assert [s["status"] for s in status["timeline"]] == ["queued", "sent", "delivered"]
+
+
+def test_lookup_number_trims_and_encodes_the_number(api: MockApi) -> None:
+    px = api.client()
+    px.lookup.number(" +447700900123 ")
+    px.lookup.number("+44/7700")
+    first, second = api.calls
+    assert (first.method, first.raw_path) == ("GET", "/api/v1/lookup/%2B447700900123")
+    # A stray slash is encoded so it can never change the path.
+    assert second.raw_path == "/api/v1/lookup/%2B44%2F7700"
+
+
+def test_webhook_management(api: MockApi) -> None:
+    px = api.client()
+    px.webhooks.create("https://example.com/hooks", ["sms.delivered", "sms.failed"])
+    px.webhooks.update("w1", is_active=False)
+    px.webhooks.rotate_secret("w1")
+    px.webhooks.test("w1")
+    px.webhooks.delete("w1")
+    assert [(c.method, c.path) for c in api.calls] == [
+        ("POST", "/api/v1/account/webhooks"),
+        ("PATCH", "/api/v1/account/webhooks/w1"),
+        ("POST", "/api/v1/account/webhooks/w1/rotate-secret"),
+        ("POST", "/api/v1/account/webhooks/w1/test"),
+        ("DELETE", "/api/v1/account/webhooks/w1"),
+    ]
+    assert api.calls[0].body == {"url": "https://example.com/hooks", "events": ["sms.delivered", "sms.failed"]}
+    assert api.calls[1].body == {"isActive": False}

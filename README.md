@@ -9,7 +9,7 @@
 <p align="center">
   <a href="https://github.com/PacketExchangeIO/packetexchange-python/actions/workflows/ci.yml"><img src="https://github.com/PacketExchangeIO/packetexchange-python/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-0.3.1-blue.svg" alt="Version 0.3.1"></a>
+  <a href="https://pypi.org/project/packetexchange/"><img src="https://img.shields.io/pypi/v/packetexchange.svg" alt="PyPI version"></a>
   <img src="https://img.shields.io/badge/python-3.9%2B-blue.svg" alt="Python 3.9+">
 </p>
 
@@ -24,14 +24,10 @@ dashboard under **API keys**.
 
 ## Installation
 
-The SDK is installed from GitHub:
-
 ```bash
-pip install git+https://github.com/PacketExchangeIO/packetexchange-python
+pip install packetexchange
 ```
 
-Pin a release tag or commit for reproducible installs, for example
-`pip install git+https://github.com/PacketExchangeIO/packetexchange-python@v0.3.1`.
 Python 3.9 or later is required.
 
 ## Quick start
@@ -73,8 +69,84 @@ with PacketExchange(api_key=os.environ["PACKETEXCHANGE_API_KEY"]) as px:
         print(e.status, e.code, e.message, e.details, e.request_id)
 ```
 
-SMS status is the send-time outcome (for example `accepted` or `failed`), not a handset
-delivery receipt. `from` is a Python keyword, so the sender is passed as `from_`.
+The `status` returned by `comms.sms()` is the send-time outcome (for example `sent` or
+`failed`). Delivery is tracked afterwards: see [SMS delivery status](#sms-delivery-status).
+`from` is a Python keyword, so the sender is passed as `from_`.
+
+## SMS delivery status
+
+`comms.get_sms()` returns a message's current status and its timeline: `queued`, `sent`,
+then `delivered` or `failed`, each step with a timestamp. A message is marked `delivered`
+only when a carrier delivery receipt confirms it. On a route that returns no receipts the
+message stays `sent` with `awaitingReceipt` set to `True`; `routeReturnsReceipts` tells you
+whether the route has returned receipts recently. `errorCode` explains a failure, and a
+message that fails on its carrier receipt is refunded.
+
+```python
+status = px.comms.get_sms(sms["messageId"])
+print(status["status"], status.get("awaitingReceipt"))
+for step in status.get("timeline", []):
+    print(step["at"], step["status"], step.get("errorCode"))
+```
+
+To be told instead of polling, subscribe a webhook endpoint to `sms.delivered` and
+`sms.failed`.
+
+## Calls with actions
+
+`comms.call()` waits for the call to end. `comms.call_async()` returns as soon as the call
+is being dialled, with a `callId` (HTTP 202, `status` `"ringing"`). Actions run in order
+once the call is answered: `say` (text spoken in `en`, `es`, `fr`, `de`, `pt` or `hi`),
+`play` (an https URL of an MP3 file), `gather` (collect keypad digits), `pause` and
+`hangup`.
+
+```python
+call = px.comms.call_async(
+    "+447700900123",
+    "+14155550100",
+    actions=[
+        {"say": "Your delivery is booked for tomorrow."},
+        {"gather": {"digits": 1, "timeout": 5, "say": "Press 1 to confirm, or 2 to rebook."}},
+        {"say": "Thank you. Goodbye."},
+        {"hangup": True},
+    ],
+)
+
+done = px.comms.wait_for_call(call["callId"])  # polls get_call() until a final state
+print(done["status"], done["hangupReason"], done["cost"])
+for g in done.get("gathered") or []:
+    print(g["index"], g["status"], g["digits"])
+```
+
+`comms.get_call()` reads the live status (`queued`, `ringing`, `answered`, then
+`completed`, `no_answer`, `busy` or `failed`), timestamps, cost and a plain-words
+`hangupReason`. Gathered digits are filled in when the call ends. In production, prefer the
+`call.ringing`, `call.answered`, `call.gathered` and `call.completed` webhooks to polling.
+A test key simulates the call and runs no actions.
+
+## Number lookup
+
+`lookup.number()` validates and formats a number and returns its country, line type
+(`mobile`, `fixed`, `toll_free`, `premium` or `unknown`), the network where the
+marketplace's rate decks agree, the network its number range was allocated to, blocked and
+high-risk flags, and the cheapest live voice and SMS price to reach it. Lookups are free,
+limited to 60 a minute, and prefix-based: no carrier query is made, so a ported number
+shows its original network and the lookup cannot tell whether a number is in service.
+
+```python
+info = px.lookup.number("+447700900123")
+if info["valid"]:
+    print(info["e164"], info["numberType"], (info.get("country") or {}).get("name"))
+    sms_price = (info.get("pricing") or {}).get("sms")
+    if sms_price:
+        print(sms_price["rate"], "USD per message")
+else:
+    print(info["reason"])
+```
+
+When a route prices SMS per network, the SMS price is for the number's network and carries
+a `network` object. `comms.sms()` returns the same `network` object when the route that
+carried the message prices per network.
 
 ## Verification codes
 
@@ -129,10 +201,16 @@ API keys are environment-scoped:
   `"simulated": True`, and `verify.start` returns `testCode` so you can complete a
   verification flow end to end.
 
+Test keys cannot make changes that have no test mode: a Switch change (any write under
+`/switch`) or an x402 top-up fails with status 403 and code `TEST_KEY_NOT_ALLOWED`. Use a
+live key for those.
+
 Keys can be limited to scopes such as `voice:send`, `sms:send`, `verify:write` and
 `routes:read`. A call that needs a scope the key lacks fails with status 403 and a message
-naming the missing scope. A few account-management endpoints (API keys, payouts, creating
-or editing webhooks) accept only a dashboard session, never an API key.
+naming the missing scope. Managing webhook endpoints needs the `webhooks:write` scope,
+which a full-access key does not include: choose it explicitly when you create the key. A
+few account-management endpoints (API keys, payouts) accept only a dashboard session,
+never an API key.
 
 ## Error handling
 
@@ -221,9 +299,14 @@ stripped. Pass `allow_legacy=False` to refuse the legacy scheme entirely. The re
 the signature is valid; `scheme` is `"v1"`, `"legacy"` or `"none"`. Comparison is
 constant-time.
 
-Inspect and resend deliveries with the `webhooks` resource:
+Manage endpoints, and inspect or resend deliveries, with the `webhooks` resource. Creating,
+editing, deleting and rotating the secret need a key with the `webhooks:write` scope. The
+signing secret is returned once, by `create` and `rotate_secret`:
 
 ```python
+hook = px.webhooks.create("https://example.com/webhooks/packetexchange", ["sms.delivered", "sms.failed"])
+secret = hook["secret"]  # store it now; it is not shown again
+
 for d in px.webhooks.deliveries(status="failed").data:
     print(d["event"], d["httpStatus"], d["lastError"])
 ```
@@ -235,14 +318,15 @@ for d in px.webhooks.deliveries(status="failed").data:
 | `routes` | Marketplace listing, Smart Routing preview, number pricing |
 | `purchases` | Buying routes, routing order, rate changes |
 | `offers` | Price proposals on routes |
-| `comms` | Single calls and SMS, voice passcode calls |
+| `comms` | Single calls (waiting or async, with actions), call status, SMS and delivery status, voice passcode calls |
 | `verify` | One-time code verification by SMS or voice |
 | `dids` | Phone number search, purchase and listing |
-| `webhooks` | Delivery history and resends |
+| `webhooks` | Webhook endpoints, delivery history and resends |
 | `api_keys` | Listing API keys (dashboard session only) |
 | `account` | Profile, balance, API usage |
 | `billing` | The transaction ledger |
 | `cli_tests` | Route liveness tests |
+| `lookup` | Number lookup: type, network, risk flags and cheapest price |
 
 Listing ASR and ACD figures are stated by the seller, not measured by PacketExchange.
 

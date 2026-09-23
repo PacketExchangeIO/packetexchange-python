@@ -5,8 +5,10 @@ core endpoints. Anything without a convenience method is still one call away via
 from __future__ import annotations
 
 import json as _json
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, cast
+from urllib.parse import quote
 
 import httpx
 
@@ -76,6 +78,7 @@ class PacketExchange:
         self.billing = BillingResource(self)
         self.cli_tests = CliTestsResource(self)
         self.verify = VerifyResource(self)
+        self.lookup = LookupResource(self)
 
     # ── lifecycle ────────────────────────────────────────────────────────────────
 
@@ -293,11 +296,61 @@ class OffersResource(_Resource):
 
 class CommsResource(_Resource):
     def call(self, to: str, from_: str, idempotency_key: Optional[str] = None, **extra: Any) -> Any:
-        """POST /comms/calls - place one call (scope voice:send).
+        """POST /comms/calls - place one call (scope voice:send). Blocks until it ends.
 
         The request returns when the call ends, so keep the client timeout above
-        ``maxDuration`` (pass ``timeout=`` to the client for long calls)."""
+        ``maxDuration`` (pass ``timeout=`` to the client for long calls). Pass
+        ``actions=[...]`` to make the answered call speak, play, gather digits, pause or
+        hang up, and ``language`` for the default ``say`` language. For a call that
+        returns at once, use :meth:`call_async`.
+        """
         return self._c.request("POST", "/comms/calls", json={"to": to, "from": from_, **extra}, idempotency_key=idempotency_key)
+
+    def call_async(
+        self,
+        to: str,
+        from_: str,
+        actions: Optional[List[Dict[str, Any]]] = None,
+        language: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+        **extra: Any,
+    ) -> Any:
+        """POST /comms/calls with ``async: true`` - returns as soon as the call is dialled.
+
+        The result carries ``callId`` and ``status == "ringing"``; follow the call with
+        :meth:`get_call`, :meth:`wait_for_call` or the ``call.ringing``, ``call.answered``,
+        ``call.gathered`` and ``call.completed`` webhooks. Test keys simulate the call and
+        run no actions. Example::
+
+            call = px.comms.call_async(
+                "+447700900123", "+14155550100",
+                actions=[{"say": "Press 1 to confirm."}, {"gather": {"digits": 1, "timeout": 5}}],
+            )
+            done = px.comms.wait_for_call(call["callId"])
+            print(done["status"], (done.get("gathered") or [{}])[0].get("digits"))
+        """
+        body = _clean({"to": to, "from": from_, "actions": actions, "language": language})
+        return self._c.request(
+            "POST", "/comms/calls", json={**body, **extra, "async": True}, idempotency_key=idempotency_key
+        )
+
+    def get_call(self, call_id: str) -> "_m.CommsCallStatus":
+        """GET /comms/calls/{id} - live status, timestamps, cost, hangup reason and gathered digits."""
+        return cast("_m.CommsCallStatus", self._c.request("GET", f"/comms/calls/{_seg(call_id)}"))
+
+    def wait_for_call(self, call_id: str, timeout: float = 600.0, interval: float = 2.0) -> "_m.CommsCallStatus":
+        """Poll :meth:`get_call` until the call is completed, no_answer, busy or failed.
+
+        Returns the last status read, even when ``timeout`` seconds pass first. Webhooks
+        suit production better; this is for scripts and notebooks.
+        """
+        deadline = time.monotonic() + timeout
+        step = max(1.0, interval)
+        while True:
+            s = self.get_call(call_id)
+            if s.get("status") in ("completed", "no_answer", "busy", "failed") or time.monotonic() + step > deadline:
+                return s
+            time.sleep(step)
 
     def sms(self, to: str, from_: str, message: str, idempotency_key: Optional[str] = None, **extra: Any) -> Any:
         """POST /comms/sms - send one SMS (scope sms:send)."""
@@ -336,6 +389,17 @@ class CommsResource(_Resource):
         """GET /comms/voice-otp/{id} - status, duration and cost of a voice passcode call."""
         return self._c.request("GET", f"/comms/voice-otp/{_seg(voice_otp_id)}")
 
+    def get_sms(self, message_id: str) -> "_m.CommsSmsStatus":
+        """GET /comms/sms/{messageId} - delivery status and timeline of one message.
+
+        ``timeline`` runs queued -> sent -> delivered | failed, each step with a timestamp;
+        ``errorCode`` is set on failure. ``delivered`` only ever comes from a carrier
+        delivery receipt: on a route that returns none the message stays ``sent`` with
+        ``awaitingReceipt`` true (see ``routeReturnsReceipts``). An unknown id returns
+        ``status == "not_found"`` rather than raising.
+        """
+        return cast("_m.CommsSmsStatus", self._c.request("GET", f"/comms/sms/{_seg(message_id)}"))
+
 
 class DidsResource(_Resource):
     """Phone numbers (the DID Store)."""
@@ -354,11 +418,53 @@ class DidsResource(_Resource):
         """GET /dids/mine - numbers you hold."""
         return self._c.request("GET", "/dids/mine")
 
+    def get_ai_agent(self, did_id: str) -> "_m.DidAiAgent":
+        """GET /dids/{id}/ai-agent - which AI voice agent answers this number (scope numbers:read)."""
+        return cast("_m.DidAiAgent", self._c.request("GET", f"/dids/{_seg(did_id)}/ai-agent"))
+
+    def set_ai_agent(self, did_id: str, agent_id: Optional[str]) -> "_m.DidAiAgent":
+        """PUT /dids/{id}/ai-agent - have one of your AI agents answer inbound calls.
+
+        Pass ``None`` to go back to the number's call flow. Billed per second at the AI
+        voice per-minute rate; when the agent is disabled or your balance covers under 30
+        seconds, the number rings its call flow as usual (scope numbers:write).
+        """
+        return cast("_m.DidAiAgent", self._c.request("PUT", f"/dids/{_seg(did_id)}/ai-agent", json={"agentId": agent_id}))
+
 
 class WebhooksResource(_Resource):
+    """Webhook endpoints and their deliveries.
+
+    ``create``, ``update``, ``delete`` and ``rotate_secret`` need a dashboard session or
+    an API key created with the ``webhooks:write`` permission; a full-access key does not
+    include it. The signing secret is returned once, by ``create`` and ``rotate_secret``.
+    """
+
     def list(self) -> Any:
         """GET /account/webhooks - endpoints (secrets redacted)."""
         return self._c.request("GET", "/account/webhooks")
+
+    def create(self, url: str, events: Sequence[str]) -> "_m.WebhookWithSecret":
+        """POST /account/webhooks - create an https endpoint; ``secret`` is returned once."""
+        return cast("_m.WebhookWithSecret", self._c.request("POST", "/account/webhooks", json={"url": url, "events": list(events)}))
+
+    def update(self, webhook_id: str, url: Optional[str] = None, events: Optional[Sequence[str]] = None,
+               is_active: Optional[bool] = None) -> "_m.Webhook":
+        """PATCH /account/webhooks/{id} - change url, events or isActive (secret kept)."""
+        body = _clean({"url": url, "events": list(events) if events is not None else None, "isActive": is_active})
+        return cast("_m.Webhook", self._c.request("PATCH", f"/account/webhooks/{_seg(webhook_id)}", json=body))
+
+    def delete(self, webhook_id: str) -> Dict[str, Any]:
+        """DELETE /account/webhooks/{id} - remove the endpoint and its delivery history."""
+        return cast(Dict[str, Any], self._c.request("DELETE", f"/account/webhooks/{_seg(webhook_id)}"))
+
+    def rotate_secret(self, webhook_id: str) -> Dict[str, Any]:
+        """POST /account/webhooks/{id}/rotate-secret - new signing secret, returned once."""
+        return cast(Dict[str, Any], self._c.request("POST", f"/account/webhooks/{_seg(webhook_id)}/rotate-secret"))
+
+    def test(self, webhook_id: str) -> Dict[str, Any]:
+        """POST /account/webhooks/{id}/test - queue a signed ``ping`` delivery."""
+        return cast(Dict[str, Any], self._c.request("POST", f"/account/webhooks/{_seg(webhook_id)}/test"))
 
     def deliveries(self, webhook_id: Optional[str] = None, status: Optional[str] = None,
                    event: Optional[str] = None, cursor: Optional[str] = None, limit: Optional[int] = None) -> Page:
@@ -375,6 +481,22 @@ class WebhooksResource(_Resource):
     def resend(self, delivery_id: str) -> Any:
         """POST /account/webhooks/deliveries/{deliveryId}/resend - queue a copy with a fresh timestamp."""
         return self._c.request("POST", f"/account/webhooks/deliveries/{_seg(delivery_id)}/resend")
+
+
+class LookupResource(_Resource):
+    """Number lookup: prefix-based and free, limited to 60 lookups a minute."""
+
+    def number(self, number: str) -> "_m.NumberLookup":
+        """GET /lookup/{number} - validate and format ``number`` (international format).
+
+        Returns its country, line type (mobile, fixed, toll_free, premium or unknown), the
+        network where the exchange's rate decks agree, blocked and high-risk flags and the
+        cheapest live voice and SMS price. No carrier HLR query is made, so porting and
+        in-service status are not visible. A malformed number returns ``valid`` False
+        with a ``reason`` rather than raising.
+        """
+        # Encode the whole segment so the leading "+" is sent as %2B, as the API documents.
+        return cast("_m.NumberLookup", self._c.request("GET", f"/lookup/{quote(number.strip(), safe='')}"))
 
 
 class ApiKeysResource(_Resource):

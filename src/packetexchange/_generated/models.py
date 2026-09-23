@@ -1,5 +1,5 @@
 # Do not edit by hand: produced by scripts/generate.py.
-# Source: openapi.json (PacketExchange API 1.1.0).
+# Source: openapi.json (PacketExchange API 1.2.0).
 # Regenerate with: python3 scripts/generate.py
 """Typed shapes of the API's documented schemas.
 
@@ -332,7 +332,7 @@ class _ApiKeyRequired(TypedDict):
     id: str
     keyPrefix: str
     label: str
-    scopes: Optional[List[Literal["voice:send", "sms:send", "dialer:write", "routes:read", "account:read", "purchases:write", "offers:write", "billing:write", "numbers:read", "numbers:write", "account:write", "routes:write", "cdr:numbers", "application:write", "switch:manage", "verify:write"]]]
+    scopes: Optional[List[Literal["voice:send", "sms:send", "dialer:write", "routes:read", "account:read", "purchases:write", "offers:write", "billing:write", "numbers:read", "numbers:write", "account:write", "routes:write", "cdr:numbers", "application:write", "switch:manage", "verify:write", "webhooks:write"]]]
     environment: Literal["live", "test"]
     lastUsedAt: Optional[str]
     createdAt: str
@@ -349,7 +349,7 @@ class _CreatedApiKeyRequired(TypedDict):
     keyPrefix: str
     prefix: str
     label: str
-    scopes: Optional[List[Literal["voice:send", "sms:send", "dialer:write", "routes:read", "account:read", "purchases:write", "offers:write", "billing:write", "numbers:read", "numbers:write", "account:write", "routes:write", "cdr:numbers", "application:write", "switch:manage", "verify:write"]]]
+    scopes: Optional[List[Literal["voice:send", "sms:send", "dialer:write", "routes:read", "account:read", "purchases:write", "offers:write", "billing:write", "numbers:read", "numbers:write", "account:write", "routes:write", "cdr:numbers", "application:write", "switch:manage", "verify:write", "webhooks:write"]]]
     environment: Literal["live", "test"]
     expiresAt: Optional[str]
 
@@ -362,7 +362,7 @@ class _WebhookRequired(TypedDict):
     id: str
     url: str
     secretLast4: str
-    events: List[Literal["call.completed", "sms.sent", "sms.dlr", "campaign.started", "campaign.completed", "topup.confirmed", "balance.low", "offer.received", "route.purchased", "sub_account.balance_low", "sub_account.suspended", "sub_account.resumed", "sub_account.topup_requested", "number.call.received", "number.sms.received", "number.voicemail.received", "invoice.created", "invoice.issued", "invoice.sent", "invoice.voided", "invoice.reissued", "invoice.payment", "credit_note.issued", "payable.created", "netting.run", "sell_rate.changed", "cost_rate.scheduled", "cost_rate.activated", "cost_rate.rolled_back", "sub_account.margin_below_floor", "ping"]]
+    events: List[Literal["call.completed", "call.ringing", "call.answered", "call.gathered", "sms.sent", "sms.dlr", "sms.delivered", "sms.failed", "campaign.started", "campaign.completed", "topup.confirmed", "balance.low", "offer.received", "route.purchased", "sub_account.balance_low", "sub_account.suspended", "sub_account.resumed", "sub_account.topup_requested", "number.call.received", "number.sms.received", "number.voicemail.received", "invoice.created", "invoice.issued", "invoice.sent", "invoice.voided", "invoice.reissued", "invoice.payment", "credit_note.issued", "payable.created", "netting.run", "sell_rate.changed", "cost_rate.scheduled", "cost_rate.activated", "cost_rate.rolled_back", "sub_account.margin_below_floor", "ping"]]
     isActive: bool
     failureCount: int
     lastDeliveryAt: Optional[str]
@@ -378,7 +378,7 @@ class _WebhookWithSecretRequired(TypedDict):
     id: str
     url: str
     secretLast4: str
-    events: List[Literal["call.completed", "sms.sent", "sms.dlr", "campaign.started", "campaign.completed", "topup.confirmed", "balance.low", "offer.received", "route.purchased", "sub_account.balance_low", "sub_account.suspended", "sub_account.resumed", "sub_account.topup_requested", "number.call.received", "number.sms.received", "number.voicemail.received", "invoice.created", "invoice.issued", "invoice.sent", "invoice.voided", "invoice.reissued", "invoice.payment", "credit_note.issued", "payable.created", "netting.run", "sell_rate.changed", "cost_rate.scheduled", "cost_rate.activated", "cost_rate.rolled_back", "sub_account.margin_below_floor", "ping"]]
+    events: List[Literal["call.completed", "call.ringing", "call.answered", "call.gathered", "sms.sent", "sms.dlr", "sms.delivered", "sms.failed", "campaign.started", "campaign.completed", "topup.confirmed", "balance.low", "offer.received", "route.purchased", "sub_account.balance_low", "sub_account.suspended", "sub_account.resumed", "sub_account.topup_requested", "number.call.received", "number.sms.received", "number.voicemail.received", "invoice.created", "invoice.issued", "invoice.sent", "invoice.voided", "invoice.reissued", "invoice.payment", "credit_note.issued", "payable.created", "netting.run", "sell_rate.changed", "cost_rate.scheduled", "cost_rate.activated", "cost_rate.rolled_back", "sub_account.margin_below_floor", "ping"]]
     isActive: bool
     failureCount: int
     lastDeliveryAt: Optional[str]
@@ -592,6 +592,10 @@ class _PricedRouteRequired(TypedDict):
 
 class PricedRoute(_PricedRouteRequired, total=False):
     """One route that serves the number, at the rate it would charge for it. Never names the seller."""
+    network: Optional[Dict[str, Any]]
+    # SMS routes that price the country per mobile network: which network `rate` is for. Absent otherwise
+    countryRate: Optional["Money"]
+    # SMS routes that price per network: the price for other or unknown networks
 
 
 class _RouteRateRequired(TypedDict):
@@ -608,7 +612,12 @@ class _RouteRateRequired(TypedDict):
 
 
 class RouteRate(_RouteRateRequired, total=False):
-    pass
+    mccMnc: Optional[str]
+    # SMS sheets priced by network code: the network the row price came from ("214" = whole country)
+    operatorRates: Optional[List[Dict[str, Any]]]
+    # SMS sheets priced by network: the price per destination network (charged per network when `networkPriced` is true). A message is charged its network's rate (networks not listed pay the All Operators rate when there is one); `ratePerUnit` is the price for other or unknown networks. The network is determined from the number's range (ported numbers may be priced at the network the range belongs to)
+    networkPriced: bool
+    # True when each SMS on this row is charged its destination network's rate from `operatorRates`; `ratePerUnit` then applies to other or unknown networks
 
 
 class _RateSheetImportRequired(TypedDict):
@@ -896,9 +905,15 @@ class Offer(_OfferRequired, total=False):
     pass
 
 
+CallAction = Union[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any]]
+
+CommsCallAccepted = TypedDict("CommsCallAccepted", {"callId": str, "status": Literal["ringing"], "mode": Literal["async"], "to": str, "from": str, "actions": int, "statusUrl": str}, total=False)
+
+CommsCallStatus = TypedDict("CommsCallStatus", {"callId": str, "status": Literal["queued", "ringing", "answered", "completed", "no_answer", "busy", "failed"], "mode": Literal["sync", "async"], "to": str, "from": str, "simulated": bool, "createdAt": str, "ringingAt": Optional[str], "answeredAt": Optional[str], "endedAt": Optional[str], "durationSeconds": Optional[int], "billableSeconds": Optional[int], "cost": Optional["Money"], "billingIncrement": Optional[str], "sipResponseCode": Optional[int], "hangupCause": Optional[str], "hangupReason": Optional[str], "error": Optional[str], "actions": Optional[List[Any]], "gathered": Optional[List[Dict[str, Any]]]}, total=False)
+
 CommsCall = TypedDict("CommsCall", {"callId": str, "to": str, "from": str, "status": Literal["answered", "no_answer", "busy", "failed", "accepted"], "sipResponseCode": Optional[int], "hangupCause": Optional[str], "durationSeconds": int, "billableSeconds": int, "cost": "Money", "billingIncrement": str, "startedAt": str, "completedAt": str, "simulated": bool, "routeId": Optional[str], "attempts": List[Dict[str, Any]]}, total=False)
 
-CommsSms = TypedDict("CommsSms", {"messageId": str, "to": str, "from": str, "status": Literal["sent", "delivered", "failed", "pending", "accepted"], "segments": int, "cost": "Money", "submittedAt": str, "simulated": bool}, total=False)
+CommsSms = TypedDict("CommsSms", {"messageId": str, "to": str, "from": str, "status": Literal["sent", "delivered", "failed", "pending", "accepted"], "segments": int, "cost": "Money", "submittedAt": str, "simulated": bool, "network": Optional[Dict[str, Any]]}, total=False)
 
 class _CommsHistoryEntryRequired(TypedDict):
     id: str
@@ -917,22 +932,22 @@ class CommsHistoryEntry(_CommsHistoryEntryRequired, total=False):
     pass
 
 
-class _CommsSmsStatusRequired(TypedDict):
-    messageId: str
-    status: str
+class _SmsTimelineStepRequired(TypedDict):
+    status: Literal["queued", "sent", "accepted", "delivered", "failed"]
+    at: str
+    source: Literal["platform", "submit", "carrier_receipt", "simulated"]
 
 
-class CommsSmsStatus(_CommsSmsStatusRequired, total=False):
-    dlrSupported: bool
-    # Always false today: no handset delivery receipts are collected
-    cost: "Money"
-    # US dollars as a decimal string with exactly 6 decimal places, e.g. "0.012500". Do money arithmetic with a decimal type, not floating point.
-    reference: Optional[str]
-    sentAt: str
-    # ISO-8601 timestamp (UTC)
-    message: str
-    # Explanation, present when status is not_found
+class SmsTimelineStep(_SmsTimelineStepRequired, total=False):
+    errorCode: Optional[str]
+    # On failed: SELLER_REJECTED, NO_ENDPOINT, UNDELIVERABLE, EXPIRED or REJECTED
+    carrierStatus: Optional[str]
+    # The carrier receipt's own status value, e.g. DELIVRD or UNDELIV
+    carrierError: Optional[str]
+    # The carrier receipt's own error value, when it sent one
 
+
+CommsSmsStatus = TypedDict("CommsSmsStatus", {"messageId": str, "status": str, "to": Optional[str], "from": Optional[str], "segments": Optional[int], "errorCode": Optional[str], "timeline": List["SmsTimelineStep"], "awaitingReceipt": bool, "routeReturnsReceipts": Optional[bool], "dlrSupported": bool, "simulated": bool, "cost": "Money", "reference": Optional[str], "sentAt": str, "message": str}, total=False)
 
 class _CommsBulkSmsResultRequired(TypedDict):
     total: int
@@ -1083,6 +1098,7 @@ class _DidRequired(TypedDict):
     endpointReachable: Optional[bool]
     endpointCause: Optional[str]
     endpointCheckedAt: Optional[str]
+    aiAgentId: Optional[str]
     graceDays: int
 
 
@@ -1190,7 +1206,7 @@ class DidRecording(_DidRecordingRequired, total=False):
     pass
 
 
-DidMessage = TypedDict("DidMessage", {"id": str, "direction": Literal["in", "out"], "from": str, "to": str, "peer": str, "body": str, "segments": int, "status": Literal["received", "queued", "sent", "delivered", "failed"], "error": Optional[str], "didwwMessageId": Optional[str], "readAt": Optional[str], "createdAt": str}, total=False)
+DidMessage = TypedDict("DidMessage", {"id": str, "direction": Literal["in", "out"], "from": str, "to": str, "peer": str, "body": str, "segments": int, "status": Literal["received", "queued", "sent", "delivered", "failed"], "error": Optional[str], "providerMessageId": Optional[str], "readAt": Optional[str], "createdAt": str}, total=False)
 
 class _DidSmsSettingsRequired(TypedDict):
     smsEnabled: bool
@@ -1264,6 +1280,41 @@ class _DidCliEligibleRequired(TypedDict):
 
 
 class DidCliEligible(_DidCliEligibleRequired, total=False):
+    pass
+
+
+class _DidAiAgentRequired(TypedDict):
+    didId: str
+    agentId: Optional[str]
+    agentName: Optional[str]
+    agentEnabled: Optional[bool]
+    live: bool
+    ratePerMin: str
+
+
+class DidAiAgent(_DidAiAgentRequired, total=False):
+    pass
+
+
+class _NumberLookupRequired(TypedDict):
+    input: str
+    valid: bool
+    reason: Optional[str]
+    e164: Optional[str]
+    internationalFormat: Optional[str]
+    country: Optional[Dict[str, Any]]
+    numberType: Literal["mobile", "fixed", "toll_free", "premium", "unknown"]
+    numberTypeConfidence: float
+    operator: Optional[str]
+    network: Optional[Dict[str, Any]]
+    matchedPrefix: Optional[str]
+    risk: Dict[str, Any]
+    pricing: Dict[str, Any]
+    method: Literal["prefix"]
+    cachedAt: str
+
+
+class NumberLookup(_NumberLookupRequired, total=False):
     pass
 
 
@@ -3208,6 +3259,45 @@ class SwitchDncHonorSetting(_SwitchDncHonorSettingRequired, total=False):
     # Customer only: trunks that set their own value instead of inheriting
 
 
+class _PricingDestinationRequired(TypedDict):
+    slug: str
+    country: str
+    countryCode: str
+    routes: int
+    lowest: str
+    lowestBand: Literal["mobile", "fixed", "countryWide"]
+    unit: Literal["min", "msg"]
+
+
+class PricingDestination(_PricingDestinationRequired, total=False):
+    pass
+
+
+class _PricingDestinationDetailRequired(TypedDict):
+    slug: str
+    country: str
+    countryCode: str
+    routes: int
+    lowest: str
+    lowestBand: Literal["mobile", "fixed", "countryWide"]
+    unit: Literal["min", "msg"]
+    type: Literal["voice", "sms"]
+    highest: str
+    bands: List[Dict[str, Any]]
+    operators: List[Dict[str, Any]]
+    cliTypes: List[Dict[str, Any]]
+    increments: List[Dict[str, Any]]
+    routesWithStatedAsr: int
+    otherBreakouts: int
+    topRoutes: List[Dict[str, Any]]
+    related: List["PricingDestination"]
+    updatedAt: str
+
+
+class PricingDestinationDetail(_PricingDestinationDetailRequired, total=False):
+    pass
+
+
 class _SystemHealthRequired(TypedDict):
     components: List[Dict[str, Any]]
     updatedAt: str
@@ -3515,4 +3605,4 @@ class RevshareIvrSet(_RevshareIvrSetRequired, total=False):
     pass
 
 
-__all__ = ["Money", "Message", "Deleted", "ValidationIssue", "Error", "ErrorEnvelope", "AccountProfile", "AccountBalance", "AccountActivityEvent", "AccountClosurePreview", "AccountSwitchEntitlement", "AccountSpendAlerts", "AccountSavedSearch", "AccountFavoriteRoute", "AccountDedicatedIp", "AccountActivatedIp", "AccountInterconnect", "AccountConnectivityBrief", "AuthTokens", "AuthSession", "AuthMfaChallenge", "AuthDeviceSession", "ApiKey", "CreatedApiKey", "Webhook", "WebhookWithSecret", "WebhookDelivery", "ApiUsage", "MarketplaceSellerProfile", "MarketplaceRoute", "OwnRoute", "MarketplaceStats", "ConnectivityTestResult", "ResolvedRoute", "PricedRoute", "RouteRate", "RateSheetImport", "ListingHealth", "BulkEndpointResult", "PriceNumberResult", "RouteAccessGrant", "RouteReport", "RouteReportThread", "Purchase", "PurchaseDetail", "PurchaseRow", "RoutingOrderEntry", "RouteForCandidate", "RoutingOrderResult", "RouteForResult", "PurchaseUpcomingRateChanges", "Offer", "CommsCall", "CommsSms", "CommsHistoryEntry", "CommsSmsStatus", "CommsBulkSmsResult", "VoiceOtpResult", "VoiceOtpStatus", "VerifyStartResult", "VerifyCheckResult", "Verification", "DidCatalogSku", "DidCatalogGroup", "DidCatalogCountry", "DidCatalogType", "Did", "DidBulkBuyResult", "DidCallFlow", "DidSipLineLogin", "DidSipLine", "DidCalls", "DidFeatures", "DidGreeting", "DidRecording", "DidMessage", "DidSmsSettings", "DidConversation", "DidAnalytics", "DidNumbersOverview", "DidListingRequestView", "DidCliEligible", "LedgerTransaction", "BillingCdr", "BillingExportJob", "BillingDocument", "TaxInvoiceSummary", "TaxInvoice", "Topup", "Payout", "AutoRecharge", "DialerCampaign", "DialerCampaignStats", "DialerNumber", "DialerNumbersUploadResult", "DialerCampaignCli", "DialerContactMapping", "DialerCallerIdSet", "DialerCallerIdNumber", "DialerCallerIdAddResult", "DialerRevshareCaller", "DialerContactList", "DialerCompatibleTargets", "DialerSmsTemplate", "DialerCliSet", "DialerContactParseResult", "CliTest", "RouteTestItem", "RouteTestBatch", "RouteTestPreview", "DncEntry", "AiAgent", "AiVoice", "AiAgentDraft", "AiAgentTurn", "SwitchCustomer", "SwitchCustomerListRow", "SwitchCustomerCreated", "SwitchCustomerSipCredentials", "SwitchCustomerLifecycleEntry", "SwitchCustomerLifecycle", "SwitchCustomerOverview", "SwitchCustomerQuality", "SwitchCustomerContact", "SwitchCustomerNote", "SwitchCustomerAttentionItem", "SwitchCustomerIssue", "SwitchCustomerBillingSummary", "SwitchCustomerCreditPosition", "SwitchCustomerPayment", "SwitchCustomerInvoicePreview", "SwitchCustomerIssuedInvoice", "SwitchCustomerBillingProfile", "SwitchCustomerSellDeckRef", "SwitchTrunkEffectiveSellDeck", "SwitchCustomerSellRate", "SwitchCustomerSellRatePage", "SwitchCustomerTrunk", "SwitchCustomerTrunkListRow", "SwitchTrunkAddressPanel", "SwitchCustomerRoutingAssignment", "SwitchTrunkCredentialStatus", "SwitchTrunkEffectiveConfig", "SwitchCustomerRateNotice", "SwitchCustomerRateChange", "SwitchSupplierTrunk", "SwitchSupplierTrunkDetail", "SwitchTrunkEndpoint", "SwitchSmsEndpointTest", "SwitchTrunkRate", "SwitchTrunkChangeRequest", "SwitchTrunkReadiness", "SwitchTrunkConfigVersion", "SwitchIpAcl", "SwitchProvider", "SwitchProviderList", "SwitchProviderContact", "SwitchProviderDetail", "SwitchProviderDispute", "SwitchSbcProfile", "SwitchCounterparty", "SwitchRatingOutcome", "SwitchRateDeckDiff", "SwitchRateDeck", "SwitchDeckSheetResult", "SwitchSellDeck", "SwitchSellDeckRow", "SwitchSellRate", "SwitchEligibleSupplier", "SwitchCostAnalysis", "SwitchSessionMargin", "SwitchRouteGroup", "SwitchDialplan", "SwitchRouteTrace", "SwitchPayment", "SwitchInvoice", "SwitchInvoiceDetail", "SwitchInvoicePreview", "SwitchCreditNote", "SwitchPayable", "SwitchCdr", "SwitchCdrExport", "SwitchCdrView", "SwitchFraudSettings", "SwitchIssue", "SwitchTeamMember", "SwitchApproval", "SwitchDncHonorSetting", "SystemHealth", "KycStatus", "UsComplianceProfile", "Notification", "SupportTicket", "SupportTicketMessage", "StatusIncident", "StatusPage", "WhitelistedIp", "Interconnection", "ConnectionProfile", "SubAccount", "SubAccountCreated", "ApplicationSettings", "RevshareNumber", "RevshareTaking", "RevsharePayout", "RevshareIvrConfig", "RevshareIvrSet"]
+__all__ = ["Money", "Message", "Deleted", "ValidationIssue", "Error", "ErrorEnvelope", "AccountProfile", "AccountBalance", "AccountActivityEvent", "AccountClosurePreview", "AccountSwitchEntitlement", "AccountSpendAlerts", "AccountSavedSearch", "AccountFavoriteRoute", "AccountDedicatedIp", "AccountActivatedIp", "AccountInterconnect", "AccountConnectivityBrief", "AuthTokens", "AuthSession", "AuthMfaChallenge", "AuthDeviceSession", "ApiKey", "CreatedApiKey", "Webhook", "WebhookWithSecret", "WebhookDelivery", "ApiUsage", "MarketplaceSellerProfile", "MarketplaceRoute", "OwnRoute", "MarketplaceStats", "ConnectivityTestResult", "ResolvedRoute", "PricedRoute", "RouteRate", "RateSheetImport", "ListingHealth", "BulkEndpointResult", "PriceNumberResult", "RouteAccessGrant", "RouteReport", "RouteReportThread", "Purchase", "PurchaseDetail", "PurchaseRow", "RoutingOrderEntry", "RouteForCandidate", "RoutingOrderResult", "RouteForResult", "PurchaseUpcomingRateChanges", "Offer", "CallAction", "CommsCallAccepted", "CommsCallStatus", "CommsCall", "CommsSms", "CommsHistoryEntry", "SmsTimelineStep", "CommsSmsStatus", "CommsBulkSmsResult", "VoiceOtpResult", "VoiceOtpStatus", "VerifyStartResult", "VerifyCheckResult", "Verification", "DidCatalogSku", "DidCatalogGroup", "DidCatalogCountry", "DidCatalogType", "Did", "DidBulkBuyResult", "DidCallFlow", "DidSipLineLogin", "DidSipLine", "DidCalls", "DidFeatures", "DidGreeting", "DidRecording", "DidMessage", "DidSmsSettings", "DidConversation", "DidAnalytics", "DidNumbersOverview", "DidListingRequestView", "DidCliEligible", "DidAiAgent", "NumberLookup", "LedgerTransaction", "BillingCdr", "BillingExportJob", "BillingDocument", "TaxInvoiceSummary", "TaxInvoice", "Topup", "Payout", "AutoRecharge", "DialerCampaign", "DialerCampaignStats", "DialerNumber", "DialerNumbersUploadResult", "DialerCampaignCli", "DialerContactMapping", "DialerCallerIdSet", "DialerCallerIdNumber", "DialerCallerIdAddResult", "DialerRevshareCaller", "DialerContactList", "DialerCompatibleTargets", "DialerSmsTemplate", "DialerCliSet", "DialerContactParseResult", "CliTest", "RouteTestItem", "RouteTestBatch", "RouteTestPreview", "DncEntry", "AiAgent", "AiVoice", "AiAgentDraft", "AiAgentTurn", "SwitchCustomer", "SwitchCustomerListRow", "SwitchCustomerCreated", "SwitchCustomerSipCredentials", "SwitchCustomerLifecycleEntry", "SwitchCustomerLifecycle", "SwitchCustomerOverview", "SwitchCustomerQuality", "SwitchCustomerContact", "SwitchCustomerNote", "SwitchCustomerAttentionItem", "SwitchCustomerIssue", "SwitchCustomerBillingSummary", "SwitchCustomerCreditPosition", "SwitchCustomerPayment", "SwitchCustomerInvoicePreview", "SwitchCustomerIssuedInvoice", "SwitchCustomerBillingProfile", "SwitchCustomerSellDeckRef", "SwitchTrunkEffectiveSellDeck", "SwitchCustomerSellRate", "SwitchCustomerSellRatePage", "SwitchCustomerTrunk", "SwitchCustomerTrunkListRow", "SwitchTrunkAddressPanel", "SwitchCustomerRoutingAssignment", "SwitchTrunkCredentialStatus", "SwitchTrunkEffectiveConfig", "SwitchCustomerRateNotice", "SwitchCustomerRateChange", "SwitchSupplierTrunk", "SwitchSupplierTrunkDetail", "SwitchTrunkEndpoint", "SwitchSmsEndpointTest", "SwitchTrunkRate", "SwitchTrunkChangeRequest", "SwitchTrunkReadiness", "SwitchTrunkConfigVersion", "SwitchIpAcl", "SwitchProvider", "SwitchProviderList", "SwitchProviderContact", "SwitchProviderDetail", "SwitchProviderDispute", "SwitchSbcProfile", "SwitchCounterparty", "SwitchRatingOutcome", "SwitchRateDeckDiff", "SwitchRateDeck", "SwitchDeckSheetResult", "SwitchSellDeck", "SwitchSellDeckRow", "SwitchSellRate", "SwitchEligibleSupplier", "SwitchCostAnalysis", "SwitchSessionMargin", "SwitchRouteGroup", "SwitchDialplan", "SwitchRouteTrace", "SwitchPayment", "SwitchInvoice", "SwitchInvoiceDetail", "SwitchInvoicePreview", "SwitchCreditNote", "SwitchPayable", "SwitchCdr", "SwitchCdrExport", "SwitchCdrView", "SwitchFraudSettings", "SwitchIssue", "SwitchTeamMember", "SwitchApproval", "SwitchDncHonorSetting", "PricingDestination", "PricingDestinationDetail", "SystemHealth", "KycStatus", "UsComplianceProfile", "Notification", "SupportTicket", "SupportTicketMessage", "StatusIncident", "StatusPage", "WhitelistedIp", "Interconnection", "ConnectionProfile", "SubAccount", "SubAccountCreated", "ApplicationSettings", "RevshareNumber", "RevshareTaking", "RevsharePayout", "RevshareIvrConfig", "RevshareIvrSet"]

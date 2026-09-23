@@ -5,6 +5,46 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-23
+
+### Added
+
+- Published on PyPI as `packetexchange`: `pip install packetexchange`.
+- Asynchronous calls: `comms.call_async(to, from_, actions=, language=)` sends
+  `POST /comms/calls` with `async: true` and returns as soon as the call is being
+  dialled (HTTP 202, `status` `"ringing"`, `callId`). `comms.get_call(call_id)` reads
+  `GET /comms/calls/{id}`: live status (queued, ringing, answered, then completed,
+  no_answer, busy or failed), timestamps, duration, cost, a plain-words `hangupReason`
+  and gathered digits. `comms.wait_for_call(call_id)` polls until a final state.
+  `comms.call()` still waits for the call to end.
+- Call actions: pass `actions` (`say`, `play`, `gather`, `pause`, `hangup`) and a
+  default `language` (en, es, fr, de, pt or hi) to `comms.call()` or
+  `comms.call_async()`. Gathered digits are reported when the call ends.
+- `comms.get_sms(message_id)` for `GET /comms/sms/{messageId}`: the delivery status and
+  timeline (queued, sent, delivered or failed, each with a timestamp), `errorCode`,
+  `awaitingReceipt` and `routeReturnsReceipts`. A message is `delivered` only when a
+  carrier delivery receipt confirms it.
+- `lookup` resource: `lookup.number(number)` for `GET /lookup/{number}`. Validation and
+  formatting, country, line type, the network where the marketplace's rate decks agree,
+  the network of the number range, blocked and high-risk flags, and the cheapest live
+  voice and SMS price. Prefix-based and free, limited to 60 lookups a minute.
+- Webhook endpoint management: `webhooks.create(url, events)`, `update(...)`,
+  `delete(id)`, `rotate_secret(id)` and `test(id)`. Creating, editing, deleting and
+  rotating need an API key with the `webhooks:write` scope, which must be chosen
+  explicitly (a full-access key does not include it).
+- Generated models: `CallAction`, `CommsCallAccepted`, `CommsCallStatus`,
+  `CommsSmsStatus`, `SmsTimelineStep`, `NumberLookup`, `PricingDestination` and
+  `PricingDestinationDetail`. The `Webhook` event list now includes `call.ringing`,
+  `call.answered`, `call.gathered`, `sms.delivered` and `sms.failed`.
+
+### Changed
+
+- `openapi.json` and the generated models are refreshed from the API (version 1.2.0).
+  `DidMessage` names its message identifier `providerMessageId`. SMS send results
+  and number lookups include a `network` object when a route prices SMS per destination
+  network. Test keys receive 403 `TEST_KEY_NOT_ALLOWED` for Switch changes and x402
+  top-ups, which have no test mode.
+
 ### Fixed
 
 - `verify_webhook_signature` accepts only a digits-only `X-PX-Timestamp`, signs the
@@ -84,5 +124,6 @@ client of the same name.
 - `packetexchange.models`: TypedDicts generated from the spec's component schemas;
   `OPERATIONS`: every operation's method, path and tag.
 
-[Unreleased]: [github.com/PacketExchangeIO/packetexchange-python/compare/v0.3.1...HEAD](https://github.com/PacketExchangeIO/packetexchange-python/compare/v0.3.1...HEAD)
-[0.3.1]: [github.com/PacketExchangeIO/packetexchange-python/releases/tag/v0.3.1](https://github.com/PacketExchangeIO/packetexchange-python/releases/tag/v0.3.1)
+[Unreleased]: https://github.com/PacketExchangeIO/packetexchange-python/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/PacketExchangeIO/packetexchange-python/releases/tag/v0.4.0
+[0.3.1]: https://github.com/PacketExchangeIO/packetexchange-python/releases/tag/v0.3.1

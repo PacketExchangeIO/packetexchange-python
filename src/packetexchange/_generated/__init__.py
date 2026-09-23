@@ -1,5 +1,5 @@
 # Do not edit by hand: produced by scripts/generate.py.
-# Source: openapi.json (PacketExchange API 1.1.0).
+# Source: openapi.json (PacketExchange API 1.2.0).
 # Regenerate with: python3 scripts/generate.py
 """Code generated from the OpenAPI spec (models + operations table)."""
 
