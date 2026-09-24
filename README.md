@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="assets/logo.png" alt="PacketExchange" width="96" height="96">
+  <a href="https://packetexchange.io"><img src="assets/banner.png" alt="PacketExchange Python SDK" width="100%"></a>
 </p>
-
-<h1 align="center">PacketExchange Python SDK</h1>
 
 <p align="center">Typed Python client for the PacketExchange voice and SMS marketplace API.</p>
 
