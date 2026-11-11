@@ -8,7 +8,7 @@ version = "0.5.0"
 description = "Python SDK for the PacketExchange voice and SMS marketplace API, with models generated from the public OpenAPI spec."
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "PacketExchange", email = "support@packetexchange.io" }]
 keywords = ["packetexchange", "voip", "sms", "otp", "verification", "telecom", "sdk", "api", "openapi", "webhooks"]
 classifiers = [
@@ -18,7 +18,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -48,7 +47,7 @@ include = ["src/packetexchange", "scripts/generate.py", "openapi.json", "tests",
 testpaths = ["tests"]
 
 [tool.mypy]
-# The package supports Python 3.9 at runtime; current mypy type-checks 3.10+ targets.
+# Type-check against the oldest supported Python.
 python_version = "3.10"
 strict = true
 files = ["src", "tests"]

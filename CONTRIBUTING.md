@@ -14,7 +14,7 @@ documentation improvements are welcome.
 
 ## Development setup
 
-You need Python 3.9 or later; the pinned toolchain in `requirements-dev.txt` targets
+You need Python 3.10 or later; the pinned toolchain in `requirements-dev.txt` targets
 Python 3.12.
 
 ```bash

@@ -58,6 +58,7 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Python 3.10 or later is now required. Python 3.9 reached end of life in October 2025.
 - `openapi.json` and the generated models are refreshed from the API (version 1.3.0).
 - Development dependencies updated: mypy 2.4.0, librt 0.16.0, ast-serialize 0.13.1,
   pluggy 1.7.0 and iniconfig 2.3.1. The release workflow uses
