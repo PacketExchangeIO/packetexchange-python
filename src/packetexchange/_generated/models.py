@@ -1,5 +1,5 @@
 # Do not edit by hand: produced by scripts/generate.py.
-# Source: openapi.json (PacketExchange API 1.2.0).
+# Source: openapi.json (PacketExchange API 1.3.0).
 # Regenerate with: python3 scripts/generate.py
 """Typed shapes of the API's documented schemas.
 
@@ -19,15 +19,6 @@ class _MessageRequired(TypedDict):
 
 
 class Message(_MessageRequired, total=False):
-    pass
-
-
-class _DeletedRequired(TypedDict):
-    id: str
-    deleted: Literal[True]
-
-
-class Deleted(_DeletedRequired, total=False):
     pass
 
 
@@ -119,28 +110,6 @@ class AccountActivityEvent(_AccountActivityEventRequired, total=False):
     pass
 
 
-class _AccountClosurePreviewRequired(TypedDict):
-    balanceUsd: str
-    heldUsd: str
-    withdrawableUsd: str
-    minWithdrawalUsd: float
-    pendingPayouts: int
-    revshareEarningsUsd: str
-    pendingRevsharePayouts: int
-    canCloseNow: bool
-    canWithdraw: bool
-    revshareCanWithdraw: bool
-    forfeitRequired: bool
-    forfeitBalanceUsd: Optional[str]
-    forfeitRevshareUsd: Optional[str]
-    forfeitAmountUsd: Optional[str]
-    message: str
-
-
-class AccountClosurePreview(_AccountClosurePreviewRequired, total=False):
-    pass
-
-
 class _AccountSwitchEntitlementRequired(TypedDict):
     active: bool
     status: Literal["none", "active", "past_due", "canceled", "comp"]
@@ -175,34 +144,15 @@ class AccountSpendAlerts(_AccountSpendAlertsRequired, total=False):
     pass
 
 
-class _AccountSavedSearchRequired(TypedDict):
+class _AccountDestinationAlertRequired(TypedDict):
     id: str
-    userId: str
-    name: str
-    filters: Dict[str, Any]
+    country: str
+    trafficType: Literal["voice", "sms"]
+    source: Literal["purchase", "manual", "backfill"]
     createdAt: str
 
 
-class AccountSavedSearch(_AccountSavedSearchRequired, total=False):
-    pass
-
-
-class _AccountFavoriteRouteRequired(TypedDict):
-    favoriteId: str
-    favoritedAt: str
-    id: str
-    type: Literal["voice", "sms"]
-    country: str
-    destinationName: str
-    pricePerUnit: "Money"
-    billingIncrement: Optional[str]
-    status: str
-    expectedAsr: Optional[str]
-    expectedAcd: Optional[str]
-    dialerCompatible: bool
-
-
-class AccountFavoriteRoute(_AccountFavoriteRouteRequired, total=False):
+class AccountDestinationAlert(_AccountDestinationAlertRequired, total=False):
     pass
 
 
@@ -285,54 +235,11 @@ class AccountConnectivityBrief(_AccountConnectivityBriefRequired, total=False):
     pass
 
 
-class _AuthTokensRequired(TypedDict):
-    accessToken: str
-    refreshToken: str
-    expiresIn: int
-
-
-class AuthTokens(_AuthTokensRequired, total=False):
-    pass
-
-
-class _AuthSessionRequired(TypedDict):
-    accessToken: str
-    refreshToken: str
-    expiresIn: int
-    user: "AccountProfile"
-
-
-class AuthSession(_AuthSessionRequired, total=False):
-    pass
-
-
-class _AuthMfaChallengeRequired(TypedDict):
-    mfaRequired: Literal[True]
-    mfaToken: str
-
-
-class AuthMfaChallenge(_AuthMfaChallengeRequired, total=False):
-    pass
-
-
-class _AuthDeviceSessionRequired(TypedDict):
-    id: str
-    ip: Optional[str]
-    userAgent: Optional[str]
-    createdAt: str
-    lastSeenAt: Optional[str]
-    current: bool
-
-
-class AuthDeviceSession(_AuthDeviceSessionRequired, total=False):
-    pass
-
-
 class _ApiKeyRequired(TypedDict):
     id: str
     keyPrefix: str
     label: str
-    scopes: Optional[List[Literal["voice:send", "sms:send", "dialer:write", "routes:read", "account:read", "purchases:write", "offers:write", "billing:write", "numbers:read", "numbers:write", "account:write", "routes:write", "cdr:numbers", "application:write", "switch:manage", "verify:write", "webhooks:write"]]]
+    scopes: Optional[List[Literal["voice:send", "sms:send", "dialer:write", "routes:read", "account:read", "purchases:write", "offers:write", "billing:write", "numbers:read", "numbers:write", "account:write", "routes:write", "cdr:numbers", "application:write", "switch:manage", "verify:write", "webhooks:write", "greetings:read", "greetings:write", "revshare:read", "revshare:write"]]]
     environment: Literal["live", "test"]
     lastUsedAt: Optional[str]
     createdAt: str
@@ -349,7 +256,7 @@ class _CreatedApiKeyRequired(TypedDict):
     keyPrefix: str
     prefix: str
     label: str
-    scopes: Optional[List[Literal["voice:send", "sms:send", "dialer:write", "routes:read", "account:read", "purchases:write", "offers:write", "billing:write", "numbers:read", "numbers:write", "account:write", "routes:write", "cdr:numbers", "application:write", "switch:manage", "verify:write", "webhooks:write"]]]
+    scopes: Optional[List[Literal["voice:send", "sms:send", "dialer:write", "routes:read", "account:read", "purchases:write", "offers:write", "billing:write", "numbers:read", "numbers:write", "account:write", "routes:write", "cdr:numbers", "application:write", "switch:manage", "verify:write", "webhooks:write", "greetings:read", "greetings:write", "revshare:read", "revshare:write"]]]
     environment: Literal["live", "test"]
     expiresAt: Optional[str]
 
@@ -362,7 +269,7 @@ class _WebhookRequired(TypedDict):
     id: str
     url: str
     secretLast4: str
-    events: List[Literal["call.completed", "call.ringing", "call.answered", "call.gathered", "sms.sent", "sms.dlr", "sms.delivered", "sms.failed", "campaign.started", "campaign.completed", "topup.confirmed", "balance.low", "offer.received", "route.purchased", "sub_account.balance_low", "sub_account.suspended", "sub_account.resumed", "sub_account.topup_requested", "number.call.received", "number.sms.received", "number.voicemail.received", "invoice.created", "invoice.issued", "invoice.sent", "invoice.voided", "invoice.reissued", "invoice.payment", "credit_note.issued", "payable.created", "netting.run", "sell_rate.changed", "cost_rate.scheduled", "cost_rate.activated", "cost_rate.rolled_back", "sub_account.margin_below_floor", "ping"]]
+    events: List[Literal["call.completed", "call.ringing", "call.answered", "call.gathered", "sms.sent", "sms.dlr", "sms.delivered", "sms.failed", "campaign.started", "campaign.completed", "topup.confirmed", "balance.low", "offer.received", "route.purchased", "sub_account.balance_low", "sub_account.suspended", "sub_account.resumed", "sub_account.topup_requested", "number.call.received", "number.sms.received", "number.voicemail.received", "verification.approved", "verification.expired", "invoice.created", "invoice.issued", "invoice.sent", "invoice.voided", "invoice.reissued", "invoice.payment", "credit_note.issued", "payable.created", "netting.run", "sell_rate.changed", "cost_rate.scheduled", "cost_rate.activated", "cost_rate.rolled_back", "sub_account.margin_below_floor", "revshare.call.received", "revshare.number.taken", "revshare.number.released", "ping"]]
     isActive: bool
     failureCount: int
     lastDeliveryAt: Optional[str]
@@ -378,7 +285,7 @@ class _WebhookWithSecretRequired(TypedDict):
     id: str
     url: str
     secretLast4: str
-    events: List[Literal["call.completed", "call.ringing", "call.answered", "call.gathered", "sms.sent", "sms.dlr", "sms.delivered", "sms.failed", "campaign.started", "campaign.completed", "topup.confirmed", "balance.low", "offer.received", "route.purchased", "sub_account.balance_low", "sub_account.suspended", "sub_account.resumed", "sub_account.topup_requested", "number.call.received", "number.sms.received", "number.voicemail.received", "invoice.created", "invoice.issued", "invoice.sent", "invoice.voided", "invoice.reissued", "invoice.payment", "credit_note.issued", "payable.created", "netting.run", "sell_rate.changed", "cost_rate.scheduled", "cost_rate.activated", "cost_rate.rolled_back", "sub_account.margin_below_floor", "ping"]]
+    events: List[Literal["call.completed", "call.ringing", "call.answered", "call.gathered", "sms.sent", "sms.dlr", "sms.delivered", "sms.failed", "campaign.started", "campaign.completed", "topup.confirmed", "balance.low", "offer.received", "route.purchased", "sub_account.balance_low", "sub_account.suspended", "sub_account.resumed", "sub_account.topup_requested", "number.call.received", "number.sms.received", "number.voicemail.received", "verification.approved", "verification.expired", "invoice.created", "invoice.issued", "invoice.sent", "invoice.voided", "invoice.reissued", "invoice.payment", "credit_note.issued", "payable.created", "netting.run", "sell_rate.changed", "cost_rate.scheduled", "cost_rate.activated", "cost_rate.rolled_back", "sub_account.margin_below_floor", "revshare.call.received", "revshare.number.taken", "revshare.number.released", "ping"]]
     isActive: bool
     failureCount: int
     lastDeliveryAt: Optional[str]
@@ -423,6 +330,19 @@ class ApiUsage(_ApiUsageRequired, total=False):
     pass
 
 
+MeasuredRouteQuality = TypedDict("MeasuredRouteQuality", {"window": Literal["7d", "30d", "last"], "from": str, "to": str, "sessions": int, "sessionsBanded": bool, "buyers": Optional[int], "asr": Optional[float], "acd": Optional[float], "ner": Optional[float], "pddMs": Optional[int]}, total=False)
+
+class _RouteCheckRecordRequired(TypedDict):
+    total: int
+    answered: int
+    lastAt: Optional[str]
+    lastResult: Optional[str]
+
+
+class RouteCheckRecord(_RouteCheckRecordRequired, total=False):
+    """Route checks on this listing in the last 7 days. Null when there were none."""
+
+
 class _MarketplaceSellerProfileRequired(TypedDict):
     verified: bool
     sellerScore: Optional[int]
@@ -465,13 +385,26 @@ class _MarketplaceRouteRequired(TypedDict):
     isOwn: bool
     sellerProfile: Optional["MarketplaceSellerProfile"]
     rateCount: int
+    verification: Optional[Literal["cli", "ncli", "connected", "not_verified"]]
 
 
 class MarketplaceRoute(_MarketplaceRouteRequired, total=False):
     """A route as a buyer sees it: no seller identity, endpoints or credentials."""
     smsType: Optional[Literal["a2p", "p2p", "both"]]
+    measured: Optional["MeasuredRouteQuality"]
+    # Measured quality from real calls; null until the listing has enough traffic from enough buyers
+    routeChecks: Optional["RouteCheckRecord"]
+    # Route checks on this listing in the last 7 days. Null when there were none.
+    listingRef: str
+    # Anonymous short reference of the listing (4 characters, e.g. "7K2Q"): stable for the life of the listing, unique enough to tell two same-named listings apart, and derived from the listing alone (it says nothing about the seller). Absent on your own listings.
     priceTrend: Optional[Dict[str, Any]]
     # Real 24h price movement from the price history; null when the route has not repriced
+    originPolicy: Literal["any", "dual", "origin_only"]
+    # Caller ID origin, declared by the seller (separate from the verification tier). `any` = one price for every call. `dual` = two prices: the origin-group price for a call presenting a VALID caller ID from `originGroup` (judged on the caller ID the seller receives, in From and P-Asserted-Identity), and `pricePerUnit` / the deck rate for every other call (another country, no caller ID, or an invalid one). `origin_only` = carried only for caller IDs from `originGroup`; other calls go to the buyer's next route.
+    originGroup: Optional[str]
+    # Origin group key, e.g. `EEA` (the 27 EU countries, Iceland, Liechtenstein, Norway); null when `originPolicy` is `any`
+    originPricing: Optional[Dict[str, Any]]
+    # Caller ID origin prices; null on a one-price route
 
 
 class _OwnRouteRequired(TypedDict):
@@ -504,10 +437,8 @@ class _OwnRouteRequired(TypedDict):
     lastQcAt: Optional[str]
     createdAt: str
     updatedAt: str
-    sellerId: str
     parentRouteId: Optional[str]
     isBundle: bool
-    jingleSipIp: Optional[str]
     sipPort: Optional[int]
     techPrefix: Optional[str]
     sipAuthUsername: Optional[str]
@@ -519,16 +450,48 @@ class _OwnRouteRequired(TypedDict):
     smppPasswordSet: bool
     endpointReachable: Optional[bool]
     endpointCheckedAt: Optional[str]
+    sipHost: Optional[str]
 
 
 class OwnRoute(_OwnRouteRequired, total=False):
     """A route you listed, as only you (the seller) see it. Passwords are never returned."""
     smsType: Optional[Literal["a2p", "p2p", "both"]]
+    measured: Optional["MeasuredRouteQuality"]
+    # Measured quality from real calls; null until the listing has enough traffic from enough buyers
+    routeChecks: Optional["RouteCheckRecord"]
+    # Route checks on this listing in the last 7 days. Null when there were none.
     isOwner: Literal[True]
-    smsDeliveryMethod: Optional[Literal["http", "smpp"]]
+    smsDeliveryMethod: Optional[Literal["http", "smpp", "http_form"]]
     sellerProfile: Optional["MarketplaceSellerProfile"]
     # Trust signals only. The marketplace never names the seller behind a listing.
     rateCount: int
+
+
+class _MyRouteOriginRequired(TypedDict):
+    endpointKey: str
+    kind: Literal["sip", "smpp", "http", "blend", "none"]
+    host: Optional[str]
+    port: Optional[int]
+    systemId: Optional[str]
+    label: Optional[str]
+    deckId: Optional[str]
+    deckName: Optional[str]
+    sheetName: Optional[str]
+
+
+class MyRouteOrigin(_MyRouteOriginRequired, total=False):
+    """Seller-only: your own endpoint details, never shown to buyers"""
+
+
+class _MyRoutesGroupsRequired(TypedDict):
+    by: Literal["endpoint", "deck"]
+    groups: List[Dict[str, Any]]
+    total: int
+    truncated: bool
+
+
+class MyRoutesGroups(_MyRoutesGroupsRequired, total=False):
+    pass
 
 
 class _MarketplaceStatsRequired(TypedDict):
@@ -549,6 +512,10 @@ class MarketplaceStats(_MarketplaceStatsRequired, total=False):
     # Signed-in only
     totalCapacity: int
     # Signed-in only
+    priceHistogram: Optional[Dict[str, Any]]
+    # Price spread of the view, ignoring minPrice/maxPrice so a range slider can show where it sits. Per-network rows when rows=network
+    verifiedShareByCountry: Optional[List[Dict[str, Any]]]
+    # Per country, how much of the voice market in view is proven; largest first
 
 
 ConnectivityTestResult = TypedDict("ConnectivityTestResult", {"pass": bool, "barred": bool, "degraded": bool, "checks": List[Dict[str, Any]], "egressAddresses": str, "gatewayIp": str, "diagnostics": Dict[str, Any], "message": str}, total=False)
@@ -587,15 +554,23 @@ class _PricedRouteRequired(TypedDict):
     routeType: str
     capacity: int
     exchangeScore: Optional[int]
+    measured: Optional["MeasuredRouteQuality"]
+    routeChecks: Optional["RouteCheckRecord"]
     isOwn: bool
 
 
 class PricedRoute(_PricedRouteRequired, total=False):
     """One route that serves the number, at the rate it would charge for it. Never names the seller."""
+    listingRef: str
+    # Anonymous short reference of the listing (4 characters, e.g. "7K2Q"): stable for the life of the listing, unique enough to tell two same-named listings apart, and derived from the listing alone (it says nothing about the seller). Absent on your own listings.
     network: Optional[Dict[str, Any]]
     # SMS routes that price the country per mobile network: which network `rate` is for. Absent otherwise
     countryRate: Optional["Money"]
     # SMS routes that price per network: the price for other or unknown networks
+    verification: Optional[Literal["cli", "ncli", "connected", "not_verified"]]
+    # Tier of the network row the number falls on (as the per-network board labels it), else the listing tier; null for SMS
+    networkName: Optional[str]
+    # Destination network the number falls on, as plain text (SMS: the operator). On voice rows `network` carries the same string
 
 
 class _RouteRateRequired(TypedDict):
@@ -664,6 +639,115 @@ class BulkEndpointResult(_BulkEndpointResultRequired, total=False):
     dryRun: bool
 
 
+RouteTestCapture = TypedDict("RouteTestCapture", {"id": str, "routeId": Optional[str], "kind": Literal["voice"], "createdAt": str, "from": Optional[str], "to": Optional[str], "sipCode": Optional[int], "status": Literal["answered", "refused", "no final answer"], "customer": Optional[str], "supplier": Optional[Literal["null"]], "callUuid": Optional[Literal["null"]], "callGroupId": Optional[Literal["null"]], "trace": Dict[str, Any]}, total=False)
+
+class _LiveEndpointTestRequired(TypedDict):
+    status: Literal["running", "done"]
+    legs: List[Dict[str, Any]]
+    allowAddresses: List[str]
+
+
+class LiveEndpointTest(_LiveEndpointTestRequired, total=False):
+    passed: bool
+    # Present once done: true when your switch accepted the test call
+    plain: str
+    # Present once done: the outcome in one or two plain sentences
+    fixes: List[Dict[str, Any]]
+    # Suggested setting changes, for example a different number format or tech prefix
+    traceUrl: str
+    # Dashboard path of the captured SIP of the test call, once the capture has arrived
+    hostname: Optional[str]
+    # The switch name as entered, when a name (not an IP) was given
+    resolvedIps: List[str]
+    # The addresses that name resolved to
+
+
+class _BuyerPreviewRequired(TypedDict):
+    routeId: str
+    isOwner: bool
+    unit: Literal["min", "msg"]
+    listing: Dict[str, Any]
+    verification: Optional[Dict[str, Any]]
+    billing: Dict[str, Any]
+    price: Optional[Dict[str, Any]]
+    networks: List[Dict[str, Any]]
+    networksTotal: int
+    quality: Dict[str, Any]
+    benchmark: Dict[str, Any]
+
+
+class BuyerPreview(_BuyerPreviewRequired, total=False):
+    pass
+
+
+class _RouteCoverageRequired(TypedDict):
+    country: str
+    countryCode: str
+    rateSheet: bool
+    allNumbers: bool
+    networks: List[Dict[str, Any]]
+    kinds: List[Literal["mobile", "fixed", "tollfree", "special", "other"]]
+    otherMobile: bool
+    prefixes: List[str]
+    prefixCount: int
+
+
+class RouteCoverage(_RouteCoverageRequired, total=False):
+    pass
+
+
+class _RouteOperatorRatesRequired(TypedDict):
+    country: str
+    countryCode: str
+    unit: Literal["min", "msg"]
+    rateSheet: bool
+    singlePrice: bool
+    billingIncrement: Optional[str]
+    personal: bool
+    rows: List[Dict[str, Any]]
+
+
+class RouteOperatorRates(_RouteOperatorRatesRequired, total=False):
+    pass
+
+
+class _RateSheetDroppedRowsRequired(TypedDict):
+    importId: str
+    filename: str
+    headerRow: Optional[int]
+    imported: int
+    dropped: int
+    groups: List[Dict[str, Any]]
+    notes: List[Dict[str, Any]]
+
+
+class RateSheetDroppedRows(_RateSheetDroppedRowsRequired, total=False):
+    pass
+
+
+class _RouteAlertRequired(TypedDict):
+    key: str
+    routeId: Optional[str]
+    routeName: str
+    endpoint: Optional[str]
+    issue: Literal["suspended", "failing_destination", "endpoint_refusing", "refusing_calls", "failing_checks", "caller_id_failures"]
+    issueLabel: str
+    status: Literal["ongoing", "resolved"]
+    firstSeen: str
+    lastSeen: str
+    count: int
+    detail: str
+    action: str
+    links: Dict[str, Any]
+    calls: Optional[Dict[str, Any]]
+    notice: Optional[Dict[str, Any]]
+    checks: List[Dict[str, Any]]
+
+
+class RouteAlert(_RouteAlertRequired, total=False):
+    pass
+
+
 class _PriceNumberResultRequired(TypedDict):
     number: str
     type: Literal["voice", "sms"]
@@ -674,6 +758,71 @@ class _PriceNumberResultRequired(TypedDict):
 
 
 class PriceNumberResult(_PriceNumberResultRequired, total=False):
+    pass
+
+
+class _EndpointStatusRequired(TypedDict):
+    endpoints: List[Dict[str, Any]]
+    allow: Dict[str, Any]
+
+
+class EndpointStatus(_EndpointStatusRequired, total=False):
+    pass
+
+
+class _SellerSendingAddressRequired(TypedDict):
+    address: str
+    mode: Literal["pending", "dedicated_with_fallback", "dedicated"]
+    verified: int
+    total: int
+    onlyOwn: bool
+
+
+class SellerSendingAddress(_SellerSendingAddressRequired, total=False):
+    pass
+
+
+class _RouteReadinessRequired(TypedDict):
+    live: bool
+    steps: List[Dict[str, Any]]
+
+
+class RouteReadiness(_RouteReadinessRequired, total=False):
+    pass
+
+
+class _RouteLineTypeEvidenceRequired(TypedDict):
+    lineType: str
+    windowDays: int
+    minCalls: int
+    mobile: Optional[Dict[str, Any]]
+    fixed: Optional[Dict[str, Any]]
+
+
+class RouteLineTypeEvidence(_RouteLineTypeEvidenceRequired, total=False):
+    pass
+
+
+class _SellerLiveCallsRequired(TypedDict):
+    calls: List[Dict[str, Any]]
+    totals: Dict[str, Any]
+    listings: List[Dict[str, Any]]
+    unfilteredCount: int
+    switchView: Dict[str, Any]
+    serverNow: float
+
+
+class SellerLiveCalls(_SellerLiveCallsRequired, total=False):
+    pass
+
+
+class _BuyerLiveCallsRequired(TypedDict):
+    calls: List[Dict[str, Any]]
+    totals: Dict[str, Any]
+    serverNow: float
+
+
+class BuyerLiveCalls(_BuyerLiveCallsRequired, total=False):
     pass
 
 
@@ -740,6 +889,82 @@ class RouteReportThread(_RouteReportThreadRequired, total=False):
     evidence: Any
     # Call evidence; seller addresses are masked for the buyer
     verifyResult: Any
+
+
+RouteAlertCalls = TypedDict("RouteAlertCalls", {"route": Dict[str, Any], "from": str, "to": str, "limited": bool, "traceRetentionDays": int, "calls": List[Dict[str, Any]]}, total=False)
+
+RouteAlertCallTrace = TypedDict("RouteAlertCallTrace", {"id": str, "at": str, "endedAt": Optional[str], "number": Optional[str], "result": str, "cause": Optional[str], "ourReply": Optional[int], "supplierReply": Optional[Dict[str, Any]], "summary": str, "endpoint": Optional[str], "sentFrom": Optional[str], "durationSeconds": int, "pddMs": Optional[int], "sipCallId": Optional[str], "traceAvailable": bool, "ladder": List[Dict[str, Any]], "route": Dict[str, Any], "from": Optional[Literal["null"]], "to": Optional[str], "status": str, "sipCode": Optional[int], "customer": Optional[Literal["null"]], "supplier": Optional[Literal["null"]], "createdAt": str, "callUuid": Optional[Literal["null"]], "callGroupId": Optional[Literal["null"]], "trace": Dict[str, Any]}, total=False)
+
+class _RouteCheckLegRequired(TypedDict):
+    position: int
+    role: Literal["primary", "backup"]
+    routeId: str
+    routeName: str
+    country: str
+    ownRoute: bool
+    result: Literal["pending", "checking", "working", "no_capacity", "not_delivered", "false_answer", "inconclusive", "accepts", "accepted", "delivered", "refused"]
+    message: str
+    checkType: Optional[Literal["full", "light", "ring_me", "sms", "simulated"]]
+    destination: Optional[str]
+    lineType: Optional[Literal["fixed", "mobile"]]
+    rang: Optional[bool]
+    answered: Optional[bool]
+    pddMs: Optional[int]
+    sipCode: Optional[int]
+    billableSeconds: int
+    cost: "Money"
+    paidFrom: Optional[Literal["test_credit", "balance", "mixed"]]
+    answerMs: Optional[int]
+    completedAt: Optional[str]
+    messageRef: Optional[str]
+    sender: Optional[str]
+    errorCode: Optional[Literal["SELLER_REJECTED", "NO_ENDPOINT", "UNDELIVERABLE", "EXPIRED", "REJECTED"]]
+    carrierStatus: Optional[str]
+    carrierError: Optional[str]
+    acceptedAt: Optional[str]
+    receiptAt: Optional[str]
+    routeReturnsReceipts: Optional[bool]
+
+
+class RouteCheckLeg(_RouteCheckLegRequired, total=False):
+    pass
+
+
+class _RouteCheckRequired(TypedDict):
+    id: str
+    status: Literal["running", "done"]
+    mode: Literal["network", "ring_me", "sms"]
+    simulated: bool
+    number: Optional[str]
+    createdAt: str
+    completedAt: Optional[str]
+    totalCost: "Money"
+    routes: List["RouteCheckLeg"]
+    working: List[str]
+
+
+class RouteCheck(_RouteCheckRequired, total=False):
+    pass
+
+
+class _RouteCheckPurchaseRequired(TypedDict):
+    purchases: List[Dict[str, Any]]
+    routingOrder: List[Dict[str, Any]]
+
+
+class RouteCheckPurchase(_RouteCheckPurchaseRequired, total=False):
+    pass
+
+
+class _RouteCheckHealthRequired(TypedDict):
+    window: Dict[str, Any]
+    suspension: Optional[Dict[str, Any]]
+    lastReinstatedAt: Optional[str]
+    recent: List[Dict[str, Any]]
+
+
+class RouteCheckHealth(_RouteCheckHealthRequired, total=False):
+    networks: Optional[List[Dict[str, Any]]]
 
 
 class _PurchaseRequired(TypedDict):
@@ -851,11 +1076,35 @@ class RouteForCandidate(_RouteForCandidateRequired, total=False):
     pass
 
 
+class _LcrViewRequired(TypedDict):
+    number: str
+    entries: List[Union[Dict[str, Any], Dict[str, Any]]]
+    expectedRate: Optional["Money"]
+    failover: Dict[str, Any]
+    warnings: List[str]
+    refused: Optional[Dict[str, Any]]
+
+
+class LcrView(_LcrViewRequired, total=False):
+    pass
+
+
 class _RoutingOrderResultRequired(TypedDict):
     order: List[Dict[str, Any]]
 
 
 class RoutingOrderResult(_RoutingOrderResultRequired, total=False):
+    pass
+
+
+class _FailoverOverviewRequired(TypedDict):
+    enabled: bool
+    maxAttempts: int
+    destinations: List[Dict[str, Any]]
+    rateSheets: List[Dict[str, Any]]
+
+
+class FailoverOverview(_FailoverOverviewRequired, total=False):
     pass
 
 
@@ -909,7 +1158,7 @@ CallAction = Union[Dict[str, Any], Dict[str, Any], Dict[str, Any], Dict[str, Any
 
 CommsCallAccepted = TypedDict("CommsCallAccepted", {"callId": str, "status": Literal["ringing"], "mode": Literal["async"], "to": str, "from": str, "actions": int, "statusUrl": str}, total=False)
 
-CommsCallStatus = TypedDict("CommsCallStatus", {"callId": str, "status": Literal["queued", "ringing", "answered", "completed", "no_answer", "busy", "failed"], "mode": Literal["sync", "async"], "to": str, "from": str, "simulated": bool, "createdAt": str, "ringingAt": Optional[str], "answeredAt": Optional[str], "endedAt": Optional[str], "durationSeconds": Optional[int], "billableSeconds": Optional[int], "cost": Optional["Money"], "billingIncrement": Optional[str], "sipResponseCode": Optional[int], "hangupCause": Optional[str], "hangupReason": Optional[str], "error": Optional[str], "actions": Optional[List[Any]], "gathered": Optional[List[Dict[str, Any]]]}, total=False)
+CommsCallStatus = TypedDict("CommsCallStatus", {"callId": str, "status": Literal["queued", "ringing", "answered", "completed", "no_answer", "busy", "failed"], "mode": Literal["sync", "async"], "to": str, "from": str, "simulated": bool, "createdAt": str, "ringingAt": Optional[str], "answeredAt": Optional[str], "endedAt": Optional[str], "durationSeconds": Optional[int], "billableSeconds": Optional[int], "cost": Optional["Money"], "billingIncrement": Optional[str], "sipResponseCode": Optional[int], "hangupCause": Optional[str], "hangupReason": Optional[str], "error": Optional[str], "actions": Optional[List[Any]], "gathered": Optional[List[Dict[str, Any]]], "routeId": Optional[str], "attempts": List[Dict[str, Any]]}, total=False)
 
 CommsCall = TypedDict("CommsCall", {"callId": str, "to": str, "from": str, "status": Literal["answered", "no_answer", "busy", "failed", "accepted"], "sipResponseCode": Optional[int], "hangupCause": Optional[str], "durationSeconds": int, "billableSeconds": int, "cost": "Money", "billingIncrement": str, "startedAt": str, "completedAt": str, "simulated": bool, "routeId": Optional[str], "attempts": List[Dict[str, Any]]}, total=False)
 
@@ -940,7 +1189,7 @@ class _SmsTimelineStepRequired(TypedDict):
 
 class SmsTimelineStep(_SmsTimelineStepRequired, total=False):
     errorCode: Optional[str]
-    # On failed: SELLER_REJECTED, NO_ENDPOINT, UNDELIVERABLE, EXPIRED or REJECTED
+    # On failed: SELLER_REJECTED, NO_ENDPOINT, UNDELIVERABLE, EXPIRED, REJECTED or TEMPORARY_FAILURE
     carrierStatus: Optional[str]
     # The carrier receipt's own status value, e.g. DELIVRD or UNDELIV
     carrierError: Optional[str]
@@ -982,6 +1231,7 @@ class VoiceOtpStatus(_VoiceOtpStatusRequired, total=False):
 
 class _VerifyStartResultRequired(TypedDict):
     verificationId: str
+    reference: Optional[str]
     to: str
     channel: Literal["sms", "voice"]
     status: Literal["pending"]
@@ -1010,8 +1260,59 @@ class VerifyCheckResult(_VerifyCheckResultRequired, total=False):
     # Why a check was not approved, when it is not obvious from `status`
 
 
+class _CallInVerificationRequired(TypedDict):
+    verificationId: str
+    reference: Optional[str]
+    to: str
+    channel: Literal["call_in"]
+    status: Literal["pending", "approved", "expired"]
+    callNumber: str
+    callNumberDisplay: str
+    callerNumber: Optional[str]
+    callReceivedAt: Optional[str]
+    callerIdAttestation: Optional[str]
+    expiresAt: str
+    createdAt: str
+    approvedAt: Optional[str]
+    price: Optional["Money"]
+
+
+class CallInVerification(_CallInVerificationRequired, total=False):
+    instructions: str
+    # Start only: a sentence you can show the user as-is
+    simulated: bool
+    # Present and true for test keys
+
+
+class _CallInCoverageRequired(TypedDict):
+    price: "Money"
+    currency: Literal["USD"]
+    numbers: List[Dict[str, Any]]
+
+
+class CallInCoverage(_CallInCoverageRequired, total=False):
+    pass
+
+
+class _CallInNumberRequired(TypedDict):
+    phoneNumberId: str
+    number: str
+    numberDisplay: str
+    country: Optional[str]
+    verifiesDialCode: Optional[str]
+    type: Optional[str]
+    status: str
+    callInEnabled: bool
+    hasCallRouting: bool
+
+
+class CallInNumber(_CallInNumberRequired, total=False):
+    pass
+
+
 class _VerificationRequired(TypedDict):
     verificationId: str
+    reference: Optional[str]
     to: str
     channel: Literal["sms", "voice"]
     status: Literal["pending", "approved", "expired", "max_attempts", "failed"]
@@ -1073,6 +1374,8 @@ class _DidCatalogTypeRequired(TypedDict):
 class DidCatalogType(_DidCatalogTypeRequired, total=False):
     pass
 
+
+DidCatalogSummary = Union[Dict[str, Any], Dict[str, Any]]
 
 class _DidRequired(TypedDict):
     id: str
@@ -1296,6 +1599,17 @@ class DidAiAgent(_DidAiAgentRequired, total=False):
     pass
 
 
+class _DidCallCapacityOfferRequired(TypedDict):
+    included: int
+    maxCalls: int
+    limit: int
+    perMinuteUsd: float
+
+
+class DidCallCapacityOffer(_DidCallCapacityOfferRequired, total=False):
+    pass
+
+
 class _NumberLookupRequired(TypedDict):
     input: str
     valid: bool
@@ -1362,6 +1676,10 @@ class _BillingCdrRequired(TypedDict):
 
 class BillingCdr(_BillingCdrRequired, total=False):
     """Supplier-side identity and network fields are nulled unless you are the seller on the record."""
+    why: Optional[Dict[str, Any]]
+    # Why this call failed, in plain English. Null unless it is a failed call.
+    rating: Dict[str, Any]
+    route: Optional[Dict[str, Any]]
 
 
 class _BillingExportJobRequired(TypedDict):
@@ -1452,25 +1770,6 @@ class Topup(_TopupRequired, total=False):
     pass
 
 
-class _PayoutRequired(TypedDict):
-    id: str
-    method: Literal["crypto", "wire"]
-    amountUsd: "Money"
-    status: Literal["pending", "processing", "completed", "rejected"]
-    cryptoToken: Optional[str]
-    cryptoNetwork: Optional[str]
-    cryptoAddress: Optional[str]
-    cryptoTxHash: Optional[str]
-    wireBankDetails: Optional[Dict[str, Any]]
-    adminNote: Optional[str]
-    createdAt: str
-    processedAt: Optional[str]
-
-
-class Payout(_PayoutRequired, total=False):
-    pass
-
-
 class _AutoRechargeRequired(TypedDict):
     enabled: bool
     threshold: Optional[str]
@@ -1481,6 +1780,33 @@ class _AutoRechargeRequired(TypedDict):
 
 class AutoRecharge(_AutoRechargeRequired, total=False):
     pass
+
+
+class _QuickPayInfoRequired(TypedDict):
+    available: bool
+    card: Optional[Dict[str, Any]]
+    minAmount: float
+    maxAmount: float
+    presets: List[float]
+
+
+class QuickPayInfo(_QuickPayInfoRequired, total=False):
+    pass
+
+
+class _QuickPayResultRequired(TypedDict):
+    topupId: str
+    amountUsd: float
+    status: Literal["succeeded", "processing", "requires_action"]
+
+
+class QuickPayResult(_QuickPayResultRequired, total=False):
+    newBalance: Optional[float]
+    # With succeeded: your balance after crediting (JSON number)
+    clientSecret: Optional[str]
+    # With requires_action: completes the 3-D Secure check client-side
+    publishableKey: Optional[str]
+    # With requires_action
 
 
 class _DialerCampaignRequired(TypedDict):
@@ -1882,6 +2208,16 @@ class _AiAgentTurnRequired(TypedDict):
 class AiAgentTurn(_AiAgentTurnRequired, total=False):
     captured: Dict[str, Any]
     # Structured details captured this turn (name, email, intent...)
+
+
+class _SwitchBulkDiscontinueResultRequired(TypedDict):
+    discontinued: int
+    skipped: int
+    reasons: List[Dict[str, Any]]
+
+
+class SwitchBulkDiscontinueResult(_SwitchBulkDiscontinueResultRequired, total=False):
+    pass
 
 
 class _SwitchCustomerRequired(TypedDict):
@@ -3307,18 +3643,6 @@ class SystemHealth(_SystemHealthRequired, total=False):
     pass
 
 
-class _KycStatusRequired(TypedDict):
-    kycStatus: Literal["not_started", "pending", "verified", "rejected"]
-    accountType: Optional[Literal["individual", "business"]]
-    kycExempt: bool
-    depositGate: bool
-    configured: bool
-
-
-class KycStatus(_KycStatusRequired, total=False):
-    pass
-
-
 class _UsComplianceProfileRequired(TypedDict):
     userId: str
     legalBusinessName: str
@@ -3351,9 +3675,21 @@ class _NotificationRequired(TypedDict):
     read: bool
     data: Optional[Dict[str, Any]]
     createdAt: str
+    severity: Literal["info", "warning", "critical"]
+    link: Optional[str]
+    occurrences: int
+    lastEventAt: Optional[str]
 
 
 class Notification(_NotificationRequired, total=False):
+    pass
+
+
+class _NotificationEmailPrefsRequired(TypedDict):
+    actionEmail: bool
+
+
+class NotificationEmailPrefs(_NotificationEmailPrefsRequired, total=False):
     pass
 
 
@@ -3605,4 +3941,140 @@ class RevshareIvrSet(_RevshareIvrSetRequired, total=False):
     pass
 
 
-__all__ = ["Money", "Message", "Deleted", "ValidationIssue", "Error", "ErrorEnvelope", "AccountProfile", "AccountBalance", "AccountActivityEvent", "AccountClosurePreview", "AccountSwitchEntitlement", "AccountSpendAlerts", "AccountSavedSearch", "AccountFavoriteRoute", "AccountDedicatedIp", "AccountActivatedIp", "AccountInterconnect", "AccountConnectivityBrief", "AuthTokens", "AuthSession", "AuthMfaChallenge", "AuthDeviceSession", "ApiKey", "CreatedApiKey", "Webhook", "WebhookWithSecret", "WebhookDelivery", "ApiUsage", "MarketplaceSellerProfile", "MarketplaceRoute", "OwnRoute", "MarketplaceStats", "ConnectivityTestResult", "ResolvedRoute", "PricedRoute", "RouteRate", "RateSheetImport", "ListingHealth", "BulkEndpointResult", "PriceNumberResult", "RouteAccessGrant", "RouteReport", "RouteReportThread", "Purchase", "PurchaseDetail", "PurchaseRow", "RoutingOrderEntry", "RouteForCandidate", "RoutingOrderResult", "RouteForResult", "PurchaseUpcomingRateChanges", "Offer", "CallAction", "CommsCallAccepted", "CommsCallStatus", "CommsCall", "CommsSms", "CommsHistoryEntry", "SmsTimelineStep", "CommsSmsStatus", "CommsBulkSmsResult", "VoiceOtpResult", "VoiceOtpStatus", "VerifyStartResult", "VerifyCheckResult", "Verification", "DidCatalogSku", "DidCatalogGroup", "DidCatalogCountry", "DidCatalogType", "Did", "DidBulkBuyResult", "DidCallFlow", "DidSipLineLogin", "DidSipLine", "DidCalls", "DidFeatures", "DidGreeting", "DidRecording", "DidMessage", "DidSmsSettings", "DidConversation", "DidAnalytics", "DidNumbersOverview", "DidListingRequestView", "DidCliEligible", "DidAiAgent", "NumberLookup", "LedgerTransaction", "BillingCdr", "BillingExportJob", "BillingDocument", "TaxInvoiceSummary", "TaxInvoice", "Topup", "Payout", "AutoRecharge", "DialerCampaign", "DialerCampaignStats", "DialerNumber", "DialerNumbersUploadResult", "DialerCampaignCli", "DialerContactMapping", "DialerCallerIdSet", "DialerCallerIdNumber", "DialerCallerIdAddResult", "DialerRevshareCaller", "DialerContactList", "DialerCompatibleTargets", "DialerSmsTemplate", "DialerCliSet", "DialerContactParseResult", "CliTest", "RouteTestItem", "RouteTestBatch", "RouteTestPreview", "DncEntry", "AiAgent", "AiVoice", "AiAgentDraft", "AiAgentTurn", "SwitchCustomer", "SwitchCustomerListRow", "SwitchCustomerCreated", "SwitchCustomerSipCredentials", "SwitchCustomerLifecycleEntry", "SwitchCustomerLifecycle", "SwitchCustomerOverview", "SwitchCustomerQuality", "SwitchCustomerContact", "SwitchCustomerNote", "SwitchCustomerAttentionItem", "SwitchCustomerIssue", "SwitchCustomerBillingSummary", "SwitchCustomerCreditPosition", "SwitchCustomerPayment", "SwitchCustomerInvoicePreview", "SwitchCustomerIssuedInvoice", "SwitchCustomerBillingProfile", "SwitchCustomerSellDeckRef", "SwitchTrunkEffectiveSellDeck", "SwitchCustomerSellRate", "SwitchCustomerSellRatePage", "SwitchCustomerTrunk", "SwitchCustomerTrunkListRow", "SwitchTrunkAddressPanel", "SwitchCustomerRoutingAssignment", "SwitchTrunkCredentialStatus", "SwitchTrunkEffectiveConfig", "SwitchCustomerRateNotice", "SwitchCustomerRateChange", "SwitchSupplierTrunk", "SwitchSupplierTrunkDetail", "SwitchTrunkEndpoint", "SwitchSmsEndpointTest", "SwitchTrunkRate", "SwitchTrunkChangeRequest", "SwitchTrunkReadiness", "SwitchTrunkConfigVersion", "SwitchIpAcl", "SwitchProvider", "SwitchProviderList", "SwitchProviderContact", "SwitchProviderDetail", "SwitchProviderDispute", "SwitchSbcProfile", "SwitchCounterparty", "SwitchRatingOutcome", "SwitchRateDeckDiff", "SwitchRateDeck", "SwitchDeckSheetResult", "SwitchSellDeck", "SwitchSellDeckRow", "SwitchSellRate", "SwitchEligibleSupplier", "SwitchCostAnalysis", "SwitchSessionMargin", "SwitchRouteGroup", "SwitchDialplan", "SwitchRouteTrace", "SwitchPayment", "SwitchInvoice", "SwitchInvoiceDetail", "SwitchInvoicePreview", "SwitchCreditNote", "SwitchPayable", "SwitchCdr", "SwitchCdrExport", "SwitchCdrView", "SwitchFraudSettings", "SwitchIssue", "SwitchTeamMember", "SwitchApproval", "SwitchDncHonorSetting", "PricingDestination", "PricingDestinationDetail", "SystemHealth", "KycStatus", "UsComplianceProfile", "Notification", "SupportTicket", "SupportTicketMessage", "StatusIncident", "StatusPage", "WhitelistedIp", "Interconnection", "ConnectionProfile", "SubAccount", "SubAccountCreated", "ApplicationSettings", "RevshareNumber", "RevshareTaking", "RevsharePayout", "RevshareIvrConfig", "RevshareIvrSet"]
+class _RevshareDeliverySettingRequired(TypedDict):
+    mode: Literal["greeting", "switch", "inherit"]
+    host: Optional[str]
+    port: int
+    transport: Literal["udp", "tcp"]
+    prefix: Optional[str]
+    numberFormat: Literal["e164", "plus", "national"]
+    maxChannels: Optional[int]
+    updatedAt: Optional[str]
+
+
+class RevshareDeliverySetting(_RevshareDeliverySettingRequired, total=False):
+    pass
+
+
+class _RevshareInterconnectRequired(TypedDict):
+    egressIps: List[str]
+    signallingPort: int
+    transports: List[str]
+    mediaIps: List[str]
+    rtpPortRange: str
+    codecs: List[str]
+    dtmf: str
+    ringTimeoutSec: int
+    callerId: str
+
+
+class RevshareInterconnect(_RevshareInterconnectRequired, total=False):
+    pass
+
+
+class _RevshareDeliveryTestRequired(TypedDict):
+    id: str
+    takingId: Optional[str]
+    dialled: str
+    host: str
+    port: int
+    transport: str
+    answered: bool
+    sipCode: Optional[int]
+    reason: Optional[str]
+    pddMs: Optional[int]
+    answerMs: Optional[int]
+    paths: List[Dict[str, Any]]
+    at: str
+
+
+class RevshareDeliveryTest(_RevshareDeliveryTestRequired, total=False):
+    pass
+
+
+class _RevshareDeliveryTraceMessageRequired(TypedDict):
+    offsetMs: int
+    at: str
+    dir: Literal["out", "in"]
+    ours: str
+    theirs: str
+    line: str
+    label: str
+    headers: List[Dict[str, Any]]
+
+
+class RevshareDeliveryTraceMessage(_RevshareDeliveryTraceMessageRequired, total=False):
+    pass
+
+
+class _RevshareDeliveryTraceRequired(TypedDict):
+    testId: str
+    at: str
+    dialled: str
+    host: str
+    port: int
+    transport: str
+    pending: bool
+    retryAfterMs: Optional[int]
+    paths: List[Dict[str, Any]]
+    text: str
+
+
+class RevshareDeliveryTrace(_RevshareDeliveryTraceRequired, total=False):
+    pass
+
+
+class _RevshareTestAllowanceRequired(TypedDict):
+    perDay: int
+    perMonth: int
+    usedToday: int
+    usedThisMonth: int
+    remainingToday: int
+    remainingThisMonth: int
+
+
+class RevshareTestAllowance(_RevshareTestAllowanceRequired, total=False):
+    pass
+
+
+class _RevshareDeliverySettingsRequired(TypedDict):
+    accountDefault: "RevshareDeliverySetting"
+    overrides: List[Dict[str, Any]]
+    interconnect: "RevshareInterconnect"
+    enabled: bool
+
+
+class RevshareDeliverySettings(_RevshareDeliverySettingsRequired, total=False):
+    pass
+
+
+class _RevshareTakingDeliveryRequired(TypedDict):
+    override: Dict[str, Any]
+    accountDefault: "RevshareDeliverySetting"
+    effective: Dict[str, Any]
+    recent: List[Dict[str, Any]]
+    interconnect: "RevshareInterconnect"
+
+
+class RevshareTakingDelivery(_RevshareTakingDeliveryRequired, total=False):
+    pass
+
+
+class _RevshareLiveAccessRequired(TypedDict):
+    days: int
+    since: str
+    generatedAt: str
+    totals: Dict[str, Any]
+    topOrigins: List[Dict[str, Any]]
+    topDestinations: List[Dict[str, Any]]
+    byType: List[Dict[str, Any]]
+    pairs: List[Dict[str, Any]]
+    rows: List[Dict[str, Any]]
+    truncated: bool
+
+
+class RevshareLiveAccess(_RevshareLiveAccessRequired, total=False):
+    pass
+
+
+__all__ = ["Money", "Message", "ValidationIssue", "Error", "ErrorEnvelope", "AccountProfile", "AccountBalance", "AccountActivityEvent", "AccountSwitchEntitlement", "AccountSpendAlerts", "AccountDestinationAlert", "AccountDedicatedIp", "AccountActivatedIp", "AccountInterconnect", "AccountConnectivityBrief", "ApiKey", "CreatedApiKey", "Webhook", "WebhookWithSecret", "WebhookDelivery", "ApiUsage", "MeasuredRouteQuality", "RouteCheckRecord", "MarketplaceSellerProfile", "MarketplaceRoute", "OwnRoute", "MyRouteOrigin", "MyRoutesGroups", "MarketplaceStats", "ConnectivityTestResult", "ResolvedRoute", "PricedRoute", "RouteRate", "RateSheetImport", "ListingHealth", "BulkEndpointResult", "RouteTestCapture", "LiveEndpointTest", "BuyerPreview", "RouteCoverage", "RouteOperatorRates", "RateSheetDroppedRows", "RouteAlert", "PriceNumberResult", "EndpointStatus", "SellerSendingAddress", "RouteReadiness", "RouteLineTypeEvidence", "SellerLiveCalls", "BuyerLiveCalls", "RouteAccessGrant", "RouteReport", "RouteReportThread", "RouteAlertCalls", "RouteAlertCallTrace", "RouteCheckLeg", "RouteCheck", "RouteCheckPurchase", "RouteCheckHealth", "Purchase", "PurchaseDetail", "PurchaseRow", "RoutingOrderEntry", "RouteForCandidate", "LcrView", "RoutingOrderResult", "FailoverOverview", "RouteForResult", "PurchaseUpcomingRateChanges", "Offer", "CallAction", "CommsCallAccepted", "CommsCallStatus", "CommsCall", "CommsSms", "CommsHistoryEntry", "SmsTimelineStep", "CommsSmsStatus", "CommsBulkSmsResult", "VoiceOtpResult", "VoiceOtpStatus", "VerifyStartResult", "VerifyCheckResult", "CallInVerification", "CallInCoverage", "CallInNumber", "Verification", "DidCatalogSku", "DidCatalogGroup", "DidCatalogCountry", "DidCatalogType", "DidCatalogSummary", "Did", "DidBulkBuyResult", "DidCallFlow", "DidSipLineLogin", "DidSipLine", "DidCalls", "DidFeatures", "DidGreeting", "DidRecording", "DidMessage", "DidSmsSettings", "DidConversation", "DidAnalytics", "DidNumbersOverview", "DidListingRequestView", "DidCliEligible", "DidAiAgent", "DidCallCapacityOffer", "NumberLookup", "LedgerTransaction", "BillingCdr", "BillingExportJob", "BillingDocument", "TaxInvoiceSummary", "TaxInvoice", "Topup", "AutoRecharge", "QuickPayInfo", "QuickPayResult", "DialerCampaign", "DialerCampaignStats", "DialerNumber", "DialerNumbersUploadResult", "DialerCampaignCli", "DialerContactMapping", "DialerCallerIdSet", "DialerCallerIdNumber", "DialerCallerIdAddResult", "DialerRevshareCaller", "DialerContactList", "DialerCompatibleTargets", "DialerSmsTemplate", "DialerCliSet", "DialerContactParseResult", "CliTest", "RouteTestItem", "RouteTestBatch", "RouteTestPreview", "DncEntry", "AiAgent", "AiVoice", "AiAgentDraft", "AiAgentTurn", "SwitchBulkDiscontinueResult", "SwitchCustomer", "SwitchCustomerListRow", "SwitchCustomerCreated", "SwitchCustomerSipCredentials", "SwitchCustomerLifecycleEntry", "SwitchCustomerLifecycle", "SwitchCustomerOverview", "SwitchCustomerQuality", "SwitchCustomerContact", "SwitchCustomerNote", "SwitchCustomerAttentionItem", "SwitchCustomerIssue", "SwitchCustomerBillingSummary", "SwitchCustomerCreditPosition", "SwitchCustomerPayment", "SwitchCustomerInvoicePreview", "SwitchCustomerIssuedInvoice", "SwitchCustomerBillingProfile", "SwitchCustomerSellDeckRef", "SwitchTrunkEffectiveSellDeck", "SwitchCustomerSellRate", "SwitchCustomerSellRatePage", "SwitchCustomerTrunk", "SwitchCustomerTrunkListRow", "SwitchTrunkAddressPanel", "SwitchCustomerRoutingAssignment", "SwitchTrunkCredentialStatus", "SwitchTrunkEffectiveConfig", "SwitchCustomerRateNotice", "SwitchCustomerRateChange", "SwitchSupplierTrunk", "SwitchSupplierTrunkDetail", "SwitchTrunkEndpoint", "SwitchSmsEndpointTest", "SwitchTrunkRate", "SwitchTrunkChangeRequest", "SwitchTrunkReadiness", "SwitchTrunkConfigVersion", "SwitchIpAcl", "SwitchProvider", "SwitchProviderList", "SwitchProviderContact", "SwitchProviderDetail", "SwitchProviderDispute", "SwitchSbcProfile", "SwitchCounterparty", "SwitchRatingOutcome", "SwitchRateDeckDiff", "SwitchRateDeck", "SwitchDeckSheetResult", "SwitchSellDeck", "SwitchSellDeckRow", "SwitchSellRate", "SwitchEligibleSupplier", "SwitchCostAnalysis", "SwitchSessionMargin", "SwitchRouteGroup", "SwitchDialplan", "SwitchRouteTrace", "SwitchPayment", "SwitchInvoice", "SwitchInvoiceDetail", "SwitchInvoicePreview", "SwitchCreditNote", "SwitchPayable", "SwitchCdr", "SwitchCdrExport", "SwitchCdrView", "SwitchFraudSettings", "SwitchIssue", "SwitchTeamMember", "SwitchApproval", "SwitchDncHonorSetting", "PricingDestination", "PricingDestinationDetail", "SystemHealth", "UsComplianceProfile", "Notification", "NotificationEmailPrefs", "SupportTicket", "SupportTicketMessage", "StatusIncident", "StatusPage", "WhitelistedIp", "Interconnection", "ConnectionProfile", "SubAccount", "SubAccountCreated", "ApplicationSettings", "RevshareNumber", "RevshareTaking", "RevsharePayout", "RevshareIvrConfig", "RevshareIvrSet", "RevshareDeliverySetting", "RevshareInterconnect", "RevshareDeliveryTest", "RevshareDeliveryTraceMessage", "RevshareDeliveryTrace", "RevshareTestAllowance", "RevshareDeliverySettings", "RevshareTakingDelivery", "RevshareLiveAccess"]

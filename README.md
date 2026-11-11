@@ -207,8 +207,8 @@ Keys can be limited to scopes such as `voice:send`, `sms:send`, `verify:write` a
 `routes:read`. A call that needs a scope the key lacks fails with status 403 and a message
 naming the missing scope. Managing webhook endpoints needs the `webhooks:write` scope,
 which a full-access key does not include: choose it explicitly when you create the key. A
-few account-management endpoints (API keys, payouts) accept only a dashboard session,
-never an API key.
+few account-management endpoints (such as listing API keys) accept only a dashboard
+session, never an API key.
 
 ## Error handling
 
@@ -314,16 +314,20 @@ for d in px.webhooks.deliveries(status="failed").data:
 | Attribute | Covers |
 | --- | --- |
 | `routes` | Marketplace listing, Smart Routing preview, number pricing |
-| `purchases` | Buying routes, routing order, rate changes |
+| `routes.checks` | Route checks before buying: start, results, test line coverage, test SMS, buy the routes that passed |
+| `purchases` | Buying routes, routing order, least-cost routing per number, failover, rate changes |
 | `offers` | Price proposals on routes |
 | `comms` | Single calls (waiting or async, with actions), call status, SMS and delivery status, voice passcode calls |
-| `verify` | One-time code verification by SMS or voice |
-| `dids` | Phone number search, purchase and listing |
+| `verify` | One-time code verification by SMS or voice, call-in verification, recent verifications |
+| `verify.call_in` | Call-in coverage and the numbers your users call |
+| `dids` | Phone number search, purchase and listing, calls at once per number |
 | `webhooks` | Webhook endpoints, delivery history and resends |
 | `api_keys` | Listing API keys (dashboard session only) |
 | `account` | Profile, balance, API usage |
-| `billing` | The transaction ledger |
-| `cli_tests` | Route liveness tests |
+| `account.destination_alerts` | Destinations you follow for listing and price alerts |
+| `notifications` | Notification email preference |
+| `billing` | The transaction ledger, seller earnings, hold schedule, call failure summary, A-Z price list downloads (returned as bytes) |
+| `cli_tests` | Caller-ID test quotes and countries, route liveness tests |
 | `lookup` | Number lookup: type, network, risk flags and cheapest price |
 
 Listing ASR and ACD figures are stated by the seller, not measured by PacketExchange.

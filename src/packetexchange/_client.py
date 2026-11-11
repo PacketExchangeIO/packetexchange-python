@@ -7,7 +7,7 @@ from __future__ import annotations
 import json as _json
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, cast
+from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Union, cast
 from urllib.parse import quote
 
 import httpx
@@ -15,6 +15,9 @@ import httpx
 from ._errors import PacketExchangeError
 from ._generated import models as _m
 from ._generated.operations import OPERATIONS
+
+#: Media type of the price list workbooks.
+XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 #: Production host. Paths are sent under /api/v1 (added automatically).
 DEFAULT_BASE_URL = "https://packetexchange.io"
@@ -79,6 +82,7 @@ class PacketExchange:
         self.cli_tests = CliTestsResource(self)
         self.verify = VerifyResource(self)
         self.lookup = LookupResource(self)
+        self.notifications = NotificationsResource(self)
 
     # ── lifecycle ────────────────────────────────────────────────────────────────
 
@@ -98,6 +102,30 @@ class PacketExchange:
         # Operation-table paths carry /api/v1 already; convenience paths do not.
         return self._base + (path if path.startswith("/api/") else API_PREFIX + path)
 
+    def _send(
+        self,
+        method: str,
+        path: str,
+        *,
+        query: Optional[Mapping[str, Any]] = None,
+        json: Any = None,
+        idempotency_key: Optional[str] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        accept: str = "application/json",
+    ) -> httpx.Response:
+        """Send one request with auth and default headers; transport failures raise."""
+        h: Dict[str, str] = {"Accept": accept, **self._headers}
+        if self._credential:
+            h["Authorization"] = f"Bearer {self._credential}"
+        if idempotency_key:
+            # A replay of the same key within 24 hours returns the original response.
+            h["X-Idempotency-Key"] = idempotency_key
+        h.update(headers or {})
+        try:
+            return self._http.request(method, self._url(path), params=_clean(query), json=json, headers=h)
+        except httpx.HTTPError as err:
+            raise PacketExchangeError("NETWORK_ERROR", str(err) or "Network request failed", 0) from err
+
     def request_envelope(
         self,
         method: str,
@@ -109,35 +137,30 @@ class PacketExchange:
         headers: Optional[Mapping[str, str]] = None,
     ) -> Dict[str, Any]:
         """Send a request and return the whole JSON envelope, raising on failure."""
-        h: Dict[str, str] = {"Accept": "application/json", **self._headers}
-        if self._credential:
-            h["Authorization"] = f"Bearer {self._credential}"
-        if idempotency_key:
-            # A replay of the same key within 24 hours returns the original response.
-            h["X-Idempotency-Key"] = idempotency_key
-        h.update(headers or {})
-        try:
-            res = self._http.request(method, self._url(path), params=_clean(query), json=json, headers=h)
-        except httpx.HTTPError as err:
-            raise PacketExchangeError("NETWORK_ERROR", str(err) or "Network request failed", 0) from err
-
-        request_id = res.headers.get("x-request-id")
-        try:
-            body: Any = res.json() if res.content else {}
-        except _json.JSONDecodeError:
-            body = {"success": False, "error": {"code": f"HTTP_{res.status_code}", "message": res.text or res.reason_phrase}}
-
+        res = self._send(method, path, query=query, json=json, idempotency_key=idempotency_key, headers=headers)
+        body = _json_body(res)
         if res.status_code >= 400 or (isinstance(body, dict) and body.get("success") is False):
-            raw_err = body.get("error") if isinstance(body, dict) else None
-            api_err: Dict[str, Any] = raw_err if isinstance(raw_err, dict) else {}
-            raise PacketExchangeError(
-                api_err.get("code") or f"HTTP_{res.status_code}",
-                api_err.get("message") or res.reason_phrase or "Request failed",
-                res.status_code,
-                api_err.get("details"),
-                request_id,
-            )
+            raise _error(res, body)
         return body if isinstance(body, dict) else {"success": True, "data": body}
+
+    def request_bytes(
+        self,
+        method: str,
+        path: str,
+        *,
+        query: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        accept: str = "*/*",
+    ) -> bytes:
+        """Send a request and return the raw response body, for file downloads.
+
+        A failure still raises :class:`PacketExchangeError`, read from the API's JSON
+        error envelope when the response carries one.
+        """
+        res = self._send(method, path, query=query, headers=headers, accept=accept)
+        if res.status_code >= 400:
+            raise _error(res, _json_body(res))
+        return res.content
 
     def request(self, method: str, path: str, **kwargs: Any) -> Any:
         """Send a request and return its ``data``.
@@ -195,6 +218,27 @@ class PacketExchange:
         return self.request(op.method, path, **kwargs)
 
 
+def _json_body(res: httpx.Response) -> Any:
+    """The parsed JSON body; a non-JSON body becomes a synthetic error envelope."""
+    try:
+        return res.json() if res.content else {}
+    except (_json.JSONDecodeError, UnicodeDecodeError):
+        return {"success": False, "error": {"code": f"HTTP_{res.status_code}", "message": res.text or res.reason_phrase}}
+
+
+def _error(res: httpx.Response, body: Any) -> PacketExchangeError:
+    """A PacketExchangeError from a failed response and its parsed body."""
+    raw_err = body.get("error") if isinstance(body, dict) else None
+    api_err: Dict[str, Any] = raw_err if isinstance(raw_err, dict) else {}
+    return PacketExchangeError(
+        api_err.get("code") or f"HTTP_{res.status_code}",
+        api_err.get("message") or res.reason_phrase or "Request failed",
+        res.status_code,
+        api_err.get("details"),
+        res.headers.get("x-request-id"),
+    )
+
+
 def _seg(v: str) -> str:
     """Percent-encode one path segment (ids are UUIDs, but never trust input)."""
     return httpx.URL("/" + str(v)).raw_path.decode()[1:].replace("/", "%2F")
@@ -205,8 +249,67 @@ class _Resource:
         self._c = client
 
 
+class RouteChecksResource(_Resource):
+    """Route checks: try up to three routes with short real calls before you buy them.
+
+    A check is billed per connected leg at the route's rate plus the platform fee, from
+    test credit first and then your balance. A test key returns a simulated result at
+    once: no call and no charge.
+    """
+
+    def create(
+        self,
+        route_ids: Sequence[str],
+        number: Optional[str] = None,
+        mode: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """POST /routes/check - check 1 to 3 routes, in your order (first = primary).
+
+        ``mode`` is ``"network"`` (default: a public test line in the destination) or
+        ``"ring_me"`` (the route calls ``number``, your own phone). In network mode
+        ``number`` narrows an A-Z rate sheet to one destination. Returns ``checkId`` at
+        once; poll :meth:`get` until ``status`` is ``"done"`` (scope voice:send).
+        """
+        body = _clean({"routeIds": list(route_ids), "number": number, "mode": mode})
+        return cast(Dict[str, Any], self._c.request("POST", "/routes/check", json=body, idempotency_key=idempotency_key))
+
+    def get(self, check_id: str) -> "_m.RouteCheck":
+        """GET /routes/check/{id} - the check's per-route results."""
+        return cast("_m.RouteCheck", self._c.request("GET", f"/routes/check/{_seg(check_id)}"))
+
+    def list(self, limit: Optional[int] = None) -> List["_m.RouteCheck"]:
+        """GET /routes/checks - your recent checks, newest first (limit 1-50, default 20)."""
+        return cast(List["_m.RouteCheck"], self._c.request("GET", "/routes/checks", query={"limit": limit}))
+
+    def coverage(self, route_ids: Sequence[str], number: Optional[str] = None) -> List[Dict[str, Any]]:
+        """GET /routes/check/coverage - per route (1 to 3), whether a public test line exists
+        for its destination (``testLine``). Where none does, check with ``mode="ring_me"``."""
+        query = {"routeIds": ",".join(route_ids), "number": number}
+        return cast(List[Dict[str, Any]], self._c.request("GET", "/routes/check/coverage", query=query))
+
+    def send_sms(self, route_id: str, number: str, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+        """POST /routes/check/sms - send one fixed test message over an SMS route to your own
+        mobile ``number`` (scope sms:send). Returns ``checkId``; read it with :meth:`get`."""
+        return cast(Dict[str, Any], self._c.request(
+            "POST", "/routes/check/sms", json={"routeId": route_id, "number": number}, idempotency_key=idempotency_key
+        ))
+
+    def purchase(self, check_id: str, idempotency_key: Optional[str] = None) -> "_m.RouteCheckPurchase":
+        """POST /routes/check/{id}/purchase - buy every route that passed, in your order, and
+        put them at the top of your routing order. A route that cannot be bought is reported
+        in ``purchases[].error`` without stopping the others. Needs a live key."""
+        return cast("_m.RouteCheckPurchase", self._c.request(
+            "POST", f"/routes/check/{_seg(check_id)}/purchase", idempotency_key=idempotency_key
+        ))
+
+
 class RoutesResource(_Resource):
-    """Marketplace routes."""
+    """Marketplace routes. ``checks`` tests routes before you buy them."""
+
+    def __init__(self, client: PacketExchange) -> None:
+        super().__init__(client)
+        self.checks = RouteChecksResource(client)
 
     def list(self, **filters: Any) -> Page:
         """GET /routes - browse the marketplace (filters: type, country, maxPrice, limit, cursor...)."""
@@ -280,6 +383,39 @@ class PurchasesResource(_Resource):
             f"/purchases/{_seg(purchase_id)}/accept-rate",
             json=_clean({"acceptedRate": accepted_rate, "deckVersion": deck_version, "changeId": change_id}),
         ))
+
+
+    def lcr(self, to: str) -> "_m.LcrView":
+        """GET /purchases/lcr - every route that can carry a call to ``to`` from your account,
+        in the order a call tries them, with your per-minute rate, latest test, recent calls
+        and any ``warnings`` or ``refused`` reason. Limited to 60 requests a minute."""
+        return cast("_m.LcrView", self._c.request("GET", "/purchases/lcr", query={"to": to}))
+
+    def set_lcr_order(self, order: Sequence[Mapping[str, str]]) -> Dict[str, Any]:
+        """PUT /purchases/lcr-order - reorder the lines :meth:`lcr` showed for one number.
+
+        Each entry is ``{"purchaseId": ...}`` for a route you bought or ``{"routeId": ...}``
+        for one of your own routes or blends. Other destinations keep their order. Voice
+        routes only; needs a live key.
+        """
+        return cast(Dict[str, Any], self._c.request("PUT", "/purchases/lcr-order", json={"order": [dict(o) for o in order]}))
+
+    def failover(self) -> "_m.FailoverOverview":
+        """GET /purchases/failover - your first-choice and backup routes per destination."""
+        return cast("_m.FailoverOverview", self._c.request("GET", "/purchases/failover"))
+
+    def set_failover_price_limit(self, price_limit: str) -> Dict[str, Any]:
+        """PUT /purchases/failover/price-limit - how much more a backup route may cost than
+        the first route: ``same_or_lower`` (default), ``up_to_10``, ``up_to_25``, ``any``,
+        or ``off`` to turn failover off. Applies to the next call; needs a live key."""
+        return cast(Dict[str, Any], self._c.request(
+            "PUT", "/purchases/failover/price-limit", json={"priceLimit": price_limit}
+        ))
+
+    def owned(self, route_id: str) -> Optional[Dict[str, Any]]:
+        """GET /purchases/owned/{routeId} - your purchase of the route (``id``, ``status``,
+        ``smsReview``), or ``None`` when you do not hold it."""
+        return cast(Optional[Dict[str, Any]], self._c.request("GET", f"/purchases/owned/{_seg(route_id)}"))
 
 
 class OffersResource(_Resource):
@@ -431,6 +567,25 @@ class DidsResource(_Resource):
         """
         return cast("_m.DidAiAgent", self._c.request("PUT", f"/dids/{_seg(did_id)}/ai-agent", json={"agentId": agent_id}))
 
+    def call_capacity(self, did_id: str) -> Dict[str, Any]:
+        """GET /dids/{id}/call-capacity - how many calls the number takes at once: the
+        included channels, the current setting, the most you may choose and the per-minute
+        price of calls beyond the included ones. ``offer`` is None when extra calls at once
+        are not available for the number (scope numbers:read)."""
+        return cast(Dict[str, Any], self._c.request("GET", f"/dids/{_seg(did_id)}/call-capacity"))
+
+    def set_call_capacity(self, did_id: str, max_calls: int) -> Dict[str, Any]:
+        """PUT /dids/{id}/call-capacity - set how many calls the number takes at once.
+
+        ``max_calls`` must lie between the included channels and ``offer.limit``. Takes
+        effect at once; each minute of a call beyond the included channels is billed at
+        ``perMinuteUsd`` from your balance. Returns the updated ``did`` and ``offer``
+        (scope numbers:write).
+        """
+        return cast(Dict[str, Any], self._c.request(
+            "PUT", f"/dids/{_seg(did_id)}/call-capacity", json={"maxCalls": max_calls}
+        ))
+
 
 class WebhooksResource(_Resource):
     """Webhook endpoints and their deliveries.
@@ -505,7 +660,33 @@ class ApiKeysResource(_Resource):
         return self._c.request("GET", "/account/api-keys")
 
 
+class DestinationAlertsResource(_Resource):
+    """Destinations you follow: you hear about new listings, lower prices and routes reaching
+    International CLI for each one, in the app and in one daily email."""
+
+    def list(self) -> List["_m.AccountDestinationAlert"]:
+        """GET /account/destination-alerts - the destinations you follow."""
+        return cast(List["_m.AccountDestinationAlert"], self._c.request("GET", "/account/destination-alerts"))
+
+    def create(self, country: str, traffic_type: str) -> "_m.AccountDestinationAlert":
+        """POST /account/destination-alerts - follow one country for ``"voice"`` or ``"sms"``
+        traffic. Following one you already follow returns it unchanged."""
+        return cast("_m.AccountDestinationAlert", self._c.request(
+            "POST", "/account/destination-alerts", json={"country": country, "trafficType": traffic_type}
+        ))
+
+    def delete(self, alert_id: str) -> Dict[str, Any]:
+        """DELETE /account/destination-alerts/{id} - stop following a destination."""
+        return cast(Dict[str, Any], self._c.request("DELETE", f"/account/destination-alerts/{_seg(alert_id)}"))
+
+
 class AccountResource(_Resource):
+    """Your account. ``destination_alerts`` manages the destinations you follow."""
+
+    def __init__(self, client: PacketExchange) -> None:
+        super().__init__(client)
+        self.destination_alerts = DestinationAlertsResource(client)
+
     def get(self) -> Any:
         """GET /account - your profile."""
         return self._c.request("GET", "/account")
@@ -527,6 +708,41 @@ class BillingResource(_Resource):
     def iterate_transactions(self, **filters: Any) -> Iterator[Any]:
         return self._c.paginate("/billing/transactions", filters)
 
+    def earnings(self, window: Optional[int] = None) -> Dict[str, Any]:
+        """GET /billing/earnings - seller earnings per UTC day for the last ``window`` days
+        (1-90, default 30), oldest first and zero-filled, with today, 7-day and 30-day totals."""
+        return cast(Dict[str, Any], self._c.request("GET", "/billing/earnings", query={"window": window}))
+
+    def hold_schedule(self) -> Dict[str, Any]:
+        """GET /billing/hold-schedule - when held money becomes withdrawable: ``entries``,
+        ``balance``, ``held``, ``withdrawable`` and ``holdDays``."""
+        return cast(Dict[str, Any], self._c.request("GET", "/billing/hold-schedule"))
+
+    def failure_summary(self, days: Optional[int] = None) -> Dict[str, Any]:
+        """GET /billing/cdrs/failure-summary - the top reasons your calls failed over the
+        last ``days`` days (1-31, default 7)."""
+        return cast(Dict[str, Any], self._c.request("GET", "/billing/cdrs/failure-summary", query={"days": days}))
+
+    def price_list(self) -> bytes:
+        """GET /price-list.xlsx - today's A-Z marketplace price list as an Excel workbook.
+
+        Returns the file's bytes; write them to disk as they are. Downloads per account are
+        limited per 24 hours (429 ``RATE_LIMITED`` beyond that), and a 404 means today's
+        list is still being prepared.
+        """
+        return self._c.request_bytes("GET", "/price-list.xlsx", accept=XLSX_MEDIA_TYPE)
+
+    def my_price_list(self) -> bytes:
+        """GET /price-list/me.xlsx - the same workbook with your private prices and accepted
+        offers applied. Counts toward the same daily download limit."""
+        return self._c.request_bytes("GET", "/price-list/me.xlsx", accept=XLSX_MEDIA_TYPE)
+
+    def price_list_info(self) -> Optional[Dict[str, Any]]:
+        """GET /price-list/meta - the current list's ``day``, ``generatedAt``, ``fileSize``,
+        ``rowCounts``, whether it is ``public`` and the ``dailyLimit``; None before the
+        first list is ready."""
+        return cast(Optional[Dict[str, Any]], self._c.request("GET", "/price-list/meta"))
+
 
 class CliTestsResource(_Resource):
     """Caller-ID tests and route liveness tests.
@@ -534,6 +750,19 @@ class CliTestsResource(_Resource):
     A route liveness test places one real test call per route to a handset in its
     country. Each route is charged the test price ONLY if it rang.
     """
+
+    def quote(self, route_id: str) -> Dict[str, Any]:
+        """GET /cli-tests/quote - what one caller-ID test on the route would cost now, which
+        funds would pay (test credit first, then balance) and whether it can run. A route
+        that cannot be tested is not an error: ``canRun`` is false with a ``reason``.
+        Amounts here are plain JSON numbers in USD."""
+        return cast(Dict[str, Any], self._c.request("GET", "/cli-tests/quote", query={"routeId": route_id}))
+
+    def test_countries(self, route_id: str) -> Dict[str, Any]:
+        """GET /cli-tests/routes/{routeId}/test-countries - where a caller-ID test on the
+        route can call: ``{"mode": "fixed", "country": ...}`` or ``{"mode": "choose",
+        "countries": [...]}``."""
+        return cast(Dict[str, Any], self._c.request("GET", f"/cli-tests/routes/{_seg(route_id)}/test-countries"))
 
     def preview_batch(self, route_ids: Sequence[str]) -> "_m.RouteTestPreview":
         """POST /cli-tests/batches/preview - what a route test would do and cost. Writes nothing."""
@@ -561,14 +790,49 @@ class CliTestsResource(_Resource):
         return cast("_m.RouteTestBatch", self._c.request("POST", f"/cli-tests/batches/{_seg(batch_id)}/cancel"))
 
 
+class CallInResource(_Resource):
+    """Call-in verification numbers: phone numbers you hold that your users call to verify.
+
+    Buy a number in the DID Store in the country of the people you verify, then switch it
+    on with :meth:`add_number`. Each number verifies phone numbers in its own country.
+    """
+
+    def coverage(self) -> "_m.CallInCoverage":
+        """GET /verify/call-in/coverage - the countries covered, your numbers and the flat
+        price per approved verification."""
+        return cast("_m.CallInCoverage", self._c.request("GET", "/verify/call-in/coverage"))
+
+    def list_numbers(self) -> List["_m.CallInNumber"]:
+        """GET /verify/call-in/numbers - your phone numbers and their call-in setting."""
+        return cast(List["_m.CallInNumber"], self._c.request("GET", "/verify/call-in/numbers"))
+
+    def add_number(self, phone_number_id: str) -> "_m.CallInNumber":
+        """POST /verify/call-in/numbers - use one of your phone numbers for call-in verification."""
+        return cast("_m.CallInNumber", self._c.request(
+            "POST", "/verify/call-in/numbers", json={"phoneNumberId": phone_number_id}
+        ))
+
+    def remove_number(self, phone_number_id: str) -> Optional["_m.CallInNumber"]:
+        """DELETE /verify/call-in/numbers/{phoneNumberId} - stop using a number for call-in."""
+        return cast(Optional["_m.CallInNumber"], self._c.request(
+            "DELETE", f"/verify/call-in/numbers/{_seg(phone_number_id)}"
+        ))
+
+
 class VerifyResource(_Resource):
-    """Verify API: send a one-time code by SMS or voice call, then check it (scope verify:write).
+    """Verify API: send a one-time code by SMS or voice call, then check it, or verify a
+    number by a call from it (call-in). Scope verify:write.
 
     The platform generates the code and stores only a keyed hash of it. A verification
     expires (``expiry_seconds``, default 600), allows 5 attempts and approves once.
     Sends are rate limited per number and per account; a refusal raises
     :class:`PacketExchangeError` with status 429 and code ``RATE_LIMITED``.
+    ``call_in`` manages the numbers your users call for call-in verification.
     """
+
+    def __init__(self, client: PacketExchange) -> None:
+        super().__init__(client)
+        self.call_in = CallInResource(client)
 
     def start(
         self,
@@ -580,16 +844,23 @@ class VerifyResource(_Resource):
         expiry_seconds: Optional[int] = None,
         from_: Optional[str] = None,
         strategy: Optional[str] = None,
+        reference: Optional[str] = None,
+        route: Optional[str] = None,
         idempotency_key: Optional[str] = None,
     ) -> Any:
         """POST /verify/start - create a verification and send the code.
 
-        ``channel`` is ``"sms"`` or ``"voice"``. On a test key nothing is sent and the
-        result carries ``testCode`` so a sandbox flow can be completed end to end.
+        ``channel`` is ``"sms"``, ``"voice"`` or ``"call_in"``. With ``"call_in"`` no code
+        is sent: the result carries ``callNumber``, which the user calls from ``to``, and
+        the verification turns ``approved`` when the call arrives. ``reference`` is your
+        own id for the request, echoed on every read and webhook. On a test key nothing is
+        sent and the result carries ``testCode`` so a sandbox flow can be completed end to
+        end; a test call-in verification is approved with :meth:`simulate_call`.
         """
         body = _clean({
             "to": to, "channel": channel, "length": length, "language": language, "brand": brand,
             "expirySeconds": expiry_seconds, "from": from_, "strategy": strategy,
+            "reference": reference, "route": route,
         })
         return self._c.request("POST", "/verify/start", json=body, idempotency_key=idempotency_key)
 
@@ -600,3 +871,41 @@ class VerifyResource(_Resource):
     def get(self, verification_id: str) -> Any:
         """GET /verify/{id} - current state of a verification (never includes the code)."""
         return self._c.request("GET", f"/verify/{_seg(verification_id)}")
+
+    def list(
+        self,
+        reference: Optional[str] = None,
+        status: Optional[str] = None,
+        channel: Optional[str] = None,
+        limit: Optional[int] = None,
+    ) -> List[Union["_m.Verification", "_m.CallInVerification"]]:
+        """GET /verify - recent verifications, newest first (limit 1-100, default 25).
+
+        Filter by your ``reference``, ``status`` (pending, approved, expired, max_attempts,
+        failed) or ``channel`` (sms, voice, call_in).
+        """
+        query = {"reference": reference, "status": status, "channel": channel, "limit": limit}
+        return cast(List[Union["_m.Verification", "_m.CallInVerification"]], self._c.request("GET", "/verify", query=query))
+
+    def simulate_call(self, verification_id: str) -> "_m.CallInVerification":
+        """POST /verify/{id}/simulate-call - test keys only: approve a pending call-in
+        verification as if the call came from its ``to`` number. Nothing is charged."""
+        return cast("_m.CallInVerification", self._c.request("POST", f"/verify/{_seg(verification_id)}/simulate-call"))
+
+
+class NotificationsResource(_Resource):
+    """Notification email settings."""
+
+    def preferences(self) -> "_m.NotificationEmailPrefs":
+        """GET /notifications/preferences - your notification email preference."""
+        return cast("_m.NotificationEmailPrefs", self._c.request("GET", "/notifications/preferences"))
+
+    def set_preferences(self, action_email: bool) -> "_m.NotificationEmailPrefs":
+        """PUT /notifications/preferences - turn the "needs attention" digest email on or off.
+
+        The digest lists unread critical notifications, at most once every 4 hours. Security
+        and account emails are not affected. Needs a full-access key or a dashboard session.
+        """
+        return cast("_m.NotificationEmailPrefs", self._c.request(
+            "PUT", "/notifications/preferences", json={"actionEmail": action_email}
+        ))

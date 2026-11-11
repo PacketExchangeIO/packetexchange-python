@@ -5,6 +5,64 @@ versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-11
+
+### Added
+
+- Route checks, as `routes.checks`: `create(route_ids, number=, mode=)` for
+  `POST /routes/check` (1 to 3 routes, network or `ring_me` mode), `get(check_id)`,
+  `list(limit=)`, `coverage(route_ids, number=)` (whether a public test line exists),
+  `send_sms(route_id, number)` for a test message over an SMS route, and
+  `purchase(check_id)`, which buys the routes that passed and puts them at the top of
+  your routing order. `create`, `send_sms` and `purchase` accept `idempotency_key`.
+- Least-cost routing and failover on `purchases`: `lcr(to)` shows every route that can
+  carry a number in the order a call tries them, `set_lcr_order(order)` reorders them
+  for that number, `failover()` lists first-choice and backup routes per destination,
+  `set_failover_price_limit(price_limit)` caps how much more a backup may cost (or turns
+  failover off), and `owned(route_id)` returns your purchase of a route or `None`.
+- `cli_tests.quote(route_id)` prices one caller-ID test on a route, and
+  `cli_tests.test_countries(route_id)` lists the countries such a test can call.
+- Call-in verification: `verify.start()` accepts `channel="call_in"`, plus `reference`
+  and `route`. `verify.list(reference=, status=, channel=, limit=)` lists recent
+  verifications, and `verify.simulate_call(id)` approves a test-key call-in
+  verification. `verify.call_in` has `coverage()`, `list_numbers()`,
+  `add_number(phone_number_id)` and `remove_number(phone_number_id)`.
+- Billing reports: `billing.earnings(window=)`, `billing.hold_schedule()` and
+  `billing.failure_summary(days=)`.
+- A-Z price list: `billing.price_list()` and `billing.my_price_list()` return the
+  workbook (`.xlsx`) as bytes, and `billing.price_list_info()` describes the current
+  list. The client gains `request_bytes()` for file downloads; failures still raise
+  `PacketExchangeError` from the API's error envelope.
+- `account.destination_alerts` with `list()`, `create(country, traffic_type)` and
+  `delete(alert_id)`.
+- `notifications` resource: `preferences()` and `set_preferences(action_email)` for the
+  "needs attention" digest email.
+- `dids.call_capacity(did_id)` and `dids.set_call_capacity(did_id, max_calls)` for how
+  many calls a number takes at once.
+- Generated models include `RouteCheck`, `RouteCheckPurchase`, `LcrView`,
+  `FailoverOverview`, `CallInVerification`, `CallInCoverage`, `CallInNumber`,
+  `AccountDestinationAlert`, `NotificationEmailPrefs` and `DidCallCapacityOffer`.
+
+### Removed
+
+- Operations that are no longer part of the public API spec leave `OPERATIONS`, so
+  `call_operation()` now raises `ValueError` for their ids: sign-in and account security
+  under `/auth/*` (including the session list and revoke operations under
+  `/auth/sessions`, which need a dashboard session and refuse every API key), two-factor
+  setup, email change, account closure, KYC, payouts, card setup, onboarding progress,
+  Switch plan checkout and trial applications, favourites, saved searches, listing
+  claims and the Switch mode setting. The generated
+  models that only they used are removed: `AuthTokens`, `AuthSession`,
+  `AuthDeviceSession`, `AuthMfaChallenge`, `AccountClosurePreview`,
+  `AccountFavoriteRoute`, `AccountSavedSearch`, `KycStatus`, `Payout` and `Deleted`.
+
+### Changed
+
+- `openapi.json` and the generated models are refreshed from the API (version 1.3.0).
+- Development dependencies updated: mypy 2.4.0, librt 0.16.0, ast-serialize 0.13.1,
+  pluggy 1.7.0 and iniconfig 2.3.1. The release workflow uses
+  `actions/upload-artifact` v6 and `actions/download-artifact` v7.
+
 ## [0.4.0] - 2026-09-23
 
 ### Added
@@ -124,6 +182,7 @@ client of the same name.
 - `packetexchange.models`: TypedDicts generated from the spec's component schemas;
   `OPERATIONS`: every operation's method, path and tag.
 
-[Unreleased]: https://github.com/PacketExchangeIO/packetexchange-python/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/PacketExchangeIO/packetexchange-python/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/PacketExchangeIO/packetexchange-python/releases/tag/v0.5.0
 [0.4.0]: https://github.com/PacketExchangeIO/packetexchange-python/releases/tag/v0.4.0
 [0.3.1]: https://github.com/PacketExchangeIO/packetexchange-python/releases/tag/v0.3.1

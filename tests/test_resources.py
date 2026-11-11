@@ -174,3 +174,153 @@ def test_webhook_management(api: MockApi) -> None:
     ]
     assert api.calls[0].body == {"url": "https://example.com/hooks", "events": ["sms.delivered", "sms.failed"]}
     assert api.calls[1].body == {"isActive": False}
+
+
+def test_route_checks(api: MockApi) -> None:
+    px = api.client()
+    px.routes.checks.create(["r1", "r2"], number="+923001234567", mode="ring_me", idempotency_key="chk-1")
+    px.routes.checks.create(["r1"])
+    px.routes.checks.get("c1")
+    px.routes.checks.list(limit=10)
+    px.routes.checks.coverage(["r1", "r2"], number="92")
+    px.routes.checks.send_sms("r3", "+35056012345", idempotency_key="sms-1")
+    px.routes.checks.purchase("c1", idempotency_key="buy-1")
+    assert [(c.method, c.path) for c in api.calls] == [
+        ("POST", "/api/v1/routes/check"),
+        ("POST", "/api/v1/routes/check"),
+        ("GET", "/api/v1/routes/check/c1"),
+        ("GET", "/api/v1/routes/checks"),
+        ("GET", "/api/v1/routes/check/coverage"),
+        ("POST", "/api/v1/routes/check/sms"),
+        ("POST", "/api/v1/routes/check/c1/purchase"),
+    ]
+    create, bare = api.calls[0], api.calls[1]
+    assert create.body == {"routeIds": ["r1", "r2"], "number": "+923001234567", "mode": "ring_me"}
+    assert create.headers["x-idempotency-key"] == "chk-1"
+    assert bare.body == {"routeIds": ["r1"]}
+    assert api.calls[3].params == {"limit": "10"}
+    # The API reads routeIds as one comma-separated query value.
+    assert api.calls[4].params == {"routeIds": "r1,r2", "number": "92"}
+    assert api.calls[5].body == {"routeId": "r3", "number": "+35056012345"}
+    assert api.calls[5].headers["x-idempotency-key"] == "sms-1"
+    assert api.calls[6].body is None
+    assert api.calls[6].headers["x-idempotency-key"] == "buy-1"
+
+
+def test_lcr_failover_and_owned(api: MockApi) -> None:
+    px = api.client()
+    px.purchases.lcr("+447700900123")
+    px.purchases.set_lcr_order([{"purchaseId": "p2"}, {"routeId": "r9"}])
+    px.purchases.failover()
+    px.purchases.set_failover_price_limit("up_to_10")
+    px.purchases.owned("r1")
+    assert [(c.method, c.path) for c in api.calls] == [
+        ("GET", "/api/v1/purchases/lcr"),
+        ("PUT", "/api/v1/purchases/lcr-order"),
+        ("GET", "/api/v1/purchases/failover"),
+        ("PUT", "/api/v1/purchases/failover/price-limit"),
+        ("GET", "/api/v1/purchases/owned/r1"),
+    ]
+    assert api.calls[0].params == {"to": "+447700900123"}
+    assert api.calls[1].body == {"order": [{"purchaseId": "p2"}, {"routeId": "r9"}]}
+    assert api.calls[3].body == {"priceLimit": "up_to_10"}
+
+
+def test_owned_returns_none_when_not_held() -> None:
+    api = MockApi(responder=lambda _r: httpx.Response(200, json={"success": True, "data": None}))
+    assert api.client().purchases.owned("r1") is None
+
+
+def test_cli_test_quote_and_countries(api: MockApi) -> None:
+    px = api.client()
+    px.cli_tests.quote("r1")
+    px.cli_tests.test_countries("r1")
+    quote, countries = api.calls
+    assert (quote.method, quote.path, quote.params) == ("GET", "/api/v1/cli-tests/quote", {"routeId": "r1"})
+    assert (countries.method, countries.path) == ("GET", "/api/v1/cli-tests/routes/r1/test-countries")
+
+
+def test_verify_list_simulate_and_call_in(api: MockApi) -> None:
+    px = api.client()
+    px.verify.start("+447700900123", "call_in", reference="user-42", route="smart")
+    px.verify.list(channel="call_in", status="pending", limit=10)
+    px.verify.list()
+    px.verify.simulate_call("v1")
+    px.verify.call_in.coverage()
+    px.verify.call_in.list_numbers()
+    px.verify.call_in.add_number("n1")
+    px.verify.call_in.remove_number("n1")
+    assert [(c.method, c.path) for c in api.calls] == [
+        ("POST", "/api/v1/verify/start"),
+        ("GET", "/api/v1/verify"),
+        ("GET", "/api/v1/verify"),
+        ("POST", "/api/v1/verify/v1/simulate-call"),
+        ("GET", "/api/v1/verify/call-in/coverage"),
+        ("GET", "/api/v1/verify/call-in/numbers"),
+        ("POST", "/api/v1/verify/call-in/numbers"),
+        ("DELETE", "/api/v1/verify/call-in/numbers/n1"),
+    ]
+    assert api.calls[0].body == {"to": "+447700900123", "channel": "call_in", "reference": "user-42", "route": "smart"}
+    assert api.calls[1].params == {"channel": "call_in", "status": "pending", "limit": "10"}
+    assert api.calls[2].params == {}
+    assert api.calls[6].body == {"phoneNumberId": "n1"}
+
+
+def test_billing_reports(api: MockApi) -> None:
+    px = api.client()
+    px.billing.earnings(window=7)
+    px.billing.earnings()
+    px.billing.hold_schedule()
+    px.billing.failure_summary(days=3)
+    px.billing.price_list_info()
+    assert [(c.method, c.path) for c in api.calls] == [
+        ("GET", "/api/v1/billing/earnings"),
+        ("GET", "/api/v1/billing/earnings"),
+        ("GET", "/api/v1/billing/hold-schedule"),
+        ("GET", "/api/v1/billing/cdrs/failure-summary"),
+        ("GET", "/api/v1/price-list/meta"),
+    ]
+    assert api.calls[0].params == {"window": "7"}
+    assert api.calls[1].params == {}
+    assert api.calls[3].params == {"days": "3"}
+
+
+def test_price_list_downloads_return_bytes() -> None:
+    workbook = b"PK\x03\x04\x14\x00\x00\x00\x08\x00\xff\xfe"
+    xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    api = MockApi(responder=lambda _r: httpx.Response(200, content=workbook, headers={"content-type": xlsx}))
+    px = api.client()
+    assert px.billing.price_list() == workbook
+    assert px.billing.my_price_list() == workbook
+    public, mine = api.calls
+    assert (public.method, public.path) == ("GET", "/api/v1/price-list.xlsx")
+    assert (mine.method, mine.path) == ("GET", "/api/v1/price-list/me.xlsx")
+    assert public.headers["accept"] == xlsx
+    assert public.headers["authorization"] == "Bearer test-key"
+
+
+def test_destination_alerts_and_notification_preferences(api: MockApi) -> None:
+    px = api.client()
+    px.account.destination_alerts.list()
+    px.account.destination_alerts.create("Pakistan", "voice")
+    px.account.destination_alerts.delete("a1")
+    px.notifications.preferences()
+    px.notifications.set_preferences(action_email=False)
+    assert [(c.method, c.path) for c in api.calls] == [
+        ("GET", "/api/v1/account/destination-alerts"),
+        ("POST", "/api/v1/account/destination-alerts"),
+        ("DELETE", "/api/v1/account/destination-alerts/a1"),
+        ("GET", "/api/v1/notifications/preferences"),
+        ("PUT", "/api/v1/notifications/preferences"),
+    ]
+    assert api.calls[1].body == {"country": "Pakistan", "trafficType": "voice"}
+    assert api.calls[4].body == {"actionEmail": False}
+
+
+def test_did_call_capacity(api: MockApi) -> None:
+    px = api.client()
+    px.dids.call_capacity("d1")
+    px.dids.set_call_capacity("d1", 4)
+    get, put = api.calls
+    assert (get.method, get.path) == ("GET", "/api/v1/dids/d1/call-capacity")
+    assert (put.method, put.path, put.body) == ("PUT", "/api/v1/dids/d1/call-capacity", {"maxCalls": 4})

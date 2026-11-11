@@ -117,3 +117,29 @@ def test_call_operation_fills_path_parameters(api: MockApi) -> None:
         px.call_operation("noSuchOperation")
     with pytest.raises(ValueError):
         px.call_operation("getVerifyById")
+
+
+def test_request_bytes_returns_the_raw_body(api: MockApi) -> None:
+    api.responder = lambda _req: httpx.Response(200, content=b"\x00\x01binary\xff")
+    px = api.client()
+    assert px.request_bytes("GET", "/price-list.xlsx") == b"\x00\x01binary\xff"
+    assert api.calls[0].headers["accept"] == "*/*"
+
+
+def test_request_bytes_raises_the_error_envelope(api: MockApi) -> None:
+    api.responder = lambda _req: httpx.Response(
+        429,
+        headers={"x-request-id": "req-1"},
+        json={"success": False, "error": {"code": "RATE_LIMITED", "message": "Daily download limit reached"}},
+    )
+    with pytest.raises(PacketExchangeError) as info:
+        api.client().billing.price_list()
+    assert (info.value.status, info.value.code, info.value.request_id) == (429, "RATE_LIMITED", "req-1")
+    assert info.value.is_rate_limited
+
+
+def test_request_bytes_non_json_error_gets_synthetic_code(api: MockApi) -> None:
+    api.responder = lambda _req: httpx.Response(404, content=b"\xff\xfe not json")
+    with pytest.raises(PacketExchangeError) as info:
+        api.client().billing.my_price_list()
+    assert (info.value.code, info.value.status) == ("HTTP_404", 404)
